@@ -20,14 +20,19 @@ export function NeuronStats({ data }: NeuronStatsProps) {
   const dormantPercent = data.total > 0 ? Math.round((data.dormant / data.total) * 100) : 0;
 
   return (
-    <div className="w-full px-6 py-4 rounded-lg backdrop-blur-md" style={{ background: 'var(--glass-1)', border: '1px solid var(--glass-border)' }}>
+    <div
+      className="w-full px-6 py-4 rounded-lg backdrop-blur-md"
+      role="region"
+      aria-label="Neurogenesis statistics"
+      style={{ background: 'var(--glass-1)', border: '1px solid var(--glass-border)' }}
+    >
       <div className="space-y-3">
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">
-          <Brain size={16} style={{ color: 'var(--accent)' }} />
-          <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--ink3)' }}>
+          <Brain size={16} style={{ color: 'var(--accent)' }} aria-hidden="true" />
+          <h3 className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--ink3)' }}>
             Статус нейрогенеза
-          </span>
+          </h3>
         </div>
 
         {/* Progress bars */}
@@ -36,16 +41,24 @@ export function NeuronStats({ data }: NeuronStatsProps) {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Activity size={12} style={{ color: '#10b981' }} />
+                <Activity size={12} style={{ color: '#10b981' }} aria-hidden="true" />
                 <span className="font-mono text-[9px]" style={{ color: 'var(--ink2)' }}>
                   Активные
                 </span>
               </div>
-              <span className="font-mono text-[9px] font-bold" style={{ color: '#10b981' }}>
+              <span className="font-mono text-[9px] font-bold" style={{ color: '#10b981' }} aria-label={`Active neurons: ${data.active} out of ${data.total}`}>
                 {data.active}/{data.total}
               </span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--sunken)' }}>
+            <div
+              className="h-1.5 rounded-full overflow-hidden"
+              style={{ background: 'var(--sunken)' }}
+              role="progressbar"
+              aria-valuenow={activePercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Active neurons progress"
+            >
               <motion.div
                 className="h-full"
                 initial={{ width: 0 }}
@@ -62,16 +75,24 @@ export function NeuronStats({ data }: NeuronStatsProps) {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Zap size={12} style={{ color: '#06b6d4' }} />
+                <Zap size={12} style={{ color: '#06b6d4' }} aria-hidden="true" />
                 <span className="font-mono text-[9px]" style={{ color: 'var(--ink2)' }}>
                   Интегрированные
                 </span>
               </div>
-              <span className="font-mono text-[9px] font-bold" style={{ color: '#06b6d4' }}>
+              <span className="font-mono text-[9px] font-bold" style={{ color: '#06b6d4' }} aria-label={`Integrated neurons: ${data.integrated} out of ${data.total}`}>
                 {data.integrated}/{data.total}
               </span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--sunken)' }}>
+            <div
+              className="h-1.5 rounded-full overflow-hidden"
+              style={{ background: 'var(--sunken)' }}
+              role="progressbar"
+              aria-valuenow={integratedPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Integrated neurons progress"
+            >
               <motion.div
                 className="h-full"
                 initial={{ width: 0 }}
@@ -89,16 +110,24 @@ export function NeuronStats({ data }: NeuronStatsProps) {
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Brain size={12} style={{ color: 'var(--ink3)' }} />
+                  <Brain size={12} style={{ color: 'var(--ink3)' }} aria-hidden="true" />
                   <span className="font-mono text-[9px]" style={{ color: 'var(--ink2)' }}>
                     Спящие
                   </span>
                 </div>
-                <span className="font-mono text-[9px] font-bold" style={{ color: 'var(--ink3)' }}>
+                <span className="font-mono text-[9px] font-bold" style={{ color: 'var(--ink3)' }} aria-label={`Dormant neurons: ${data.dormant} out of ${data.total}`}>
                   {data.dormant}/{data.total}
                 </span>
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--sunken)' }}>
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: 'var(--sunken)' }}
+                role="progressbar"
+                aria-valuenow={dormantPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Dormant neurons progress"
+              >
                 <motion.div
                   className="h-full"
                   initial={{ width: 0 }}
@@ -115,7 +144,11 @@ export function NeuronStats({ data }: NeuronStatsProps) {
 
         {/* Average age */}
         {data.avgAge > 0 && (
-          <div className="pt-2 border-t" style={{ borderColor: 'var(--glass-border)' }}>
+          <div
+            className="pt-2 border-t"
+            style={{ borderColor: 'var(--glass-border)' }}
+            aria-label={`Average neuron age: ${Math.round(data.avgAge)} days`}
+          >
             <span className="font-mono text-[8px]" style={{ color: 'var(--ink3)' }}>
               Средний возраст: <span style={{ color: 'var(--accent)' }}>{Math.round(data.avgAge)} дн.</span>
             </span>
