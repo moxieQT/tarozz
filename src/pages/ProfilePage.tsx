@@ -326,6 +326,7 @@ export function ProfilePage() {
         maturityLevel: 0, // dynamic maturity is derived from bornAt inside the HippocampalView component
         x: 20 + (i / Math.max(completedCycles.length - 1, 1)) * 420,
         connections: [],
+        intensity: cycle.avgIntensity,
       };
     });
   }, [completedCycles]);

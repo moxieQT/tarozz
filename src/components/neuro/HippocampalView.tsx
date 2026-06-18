@@ -10,6 +10,7 @@ export interface Neuron {
   maturityLevel: number; // 0-4
   x: number; // 0-400 position
   connections: string[];
+  intensity?: number; // 0-100, used for neuron sizing and visualization
 }
 
 interface HippocampalViewProps {
@@ -317,7 +318,10 @@ export function HippocampalView({
         nodeGroup.position.copy(pos);
 
         // Render user neurons as vibrant colors based on maturity
-        const size = [2.2, 3.0, 4.2, 5.2, 6.0][maturity];
+        // Scale size based on intensity (0-100 maps to 0.8-1.2x)
+        const intensityScale = 0.8 + (Math.min(un.intensity || 50, 100) / 100) * 0.4;
+        const baseSize = [2.2, 3.0, 4.2, 5.2, 6.0][maturity];
+        const size = baseSize * intensityScale;
         const color = [0xd946ef, 0x06b6d4, 0x10b981, 0x22c55e, 0xec4899][maturity];
 
         // Active highlighted halo
@@ -460,6 +464,7 @@ export function HippocampalView({
               bornAt: neuron.bornAt,
               phaseName: phaseNames[neuron.phaseId] || `Фаза ${neuron.phaseId + 1}`,
               days,
+              intensity: neuron.intensity,
               maturityStage: MATURITY_LABELS[maturity],
             };
             setTooltipData(tooltipInfo);
