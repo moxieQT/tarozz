@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { NeuronTooltip, NeuronTooltipData } from './NeuronTooltip';
 
 export interface Neuron {
   id: string;
@@ -9,6 +10,8 @@ export interface Neuron {
   maturityLevel: number; // 0-4
   x: number; // 0-400 position
   connections: string[];
+  intensity?: number; // 0-100, used for neuron sizing and visualization
+  createdAt?: number; // timestamp for growth animation (0-1000ms growth)
 }
 
 interface HippocampalViewProps {
@@ -68,6 +71,8 @@ export function HippocampalView({
 
   const [selected, setSelected] = useState<Neuron | null>(null);
   const [threeLoaded, setThreeLoaded] = useState(false);
+  const [tooltipData, setTooltipData] = useState<NeuronTooltipData | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     let active = true;
@@ -116,7 +121,7 @@ export function HippocampalView({
       const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
       keyLight.position.set(0.5, 0.8, 1);
       scene.add(keyLight);
-      
+
       const rimLight = new THREE.PointLight(0x4488ff, 0.6, 400);
       rimLight.position.set(-60, -30, 40);
       scene.add(rimLight);
@@ -138,137 +143,143 @@ export function HippocampalView({
         return new THREE.CanvasTexture(c);
       })();
 
-      const TYPES = [
-        { key: 'neurite', color: 0x2bff6b, name: 'Хаб нейритов', marker: 'β-III тубулин' },
-        { key: 'nucleus', color: 0x4d8bff, name: 'Ядро и сателлит', marker: 'DAPI' },
-        { key: 'soma',    color: 0xff3b6b, name: 'Тело клетки (Сома)', marker: 'MAP2' },
-      ];
+      // Only show background structure when there are enough neurons
+      const showBackgroundStructure = neurons.length >= 3;
 
-      const RANGE = 44;
-      const DEPTH = 14;
+      let nodes: any[] = [];
+      let edges: any[] = [];
 
-      // ---- Generate biological structural culture nodes ----
-      const NN = 17;
-      const MIND = 15;
-      const nodes: any[] = [];
-      let guard = 0;
-      while (nodes.length < NN && guard < 6000) {
-        guard++;
-        const ang = Math.random() * Math.PI * 2;
-        const r = Math.pow(Math.random(), 0.7) * RANGE;
-        const p = new THREE.Vector3(Math.cos(ang) * r * 1.12, Math.sin(ang) * r * 0.82, rand(-DEPTH, DEPTH));
-        if (nodes.every(n => n.pos.distanceTo(p) > MIND)) {
-          const t = TYPES[Math.floor(Math.random() * TYPES.length)];
-          nodes.push({
-            pos: p,
-            type: t,
-            degree: 0,
-            cells: Math.floor(rand(2, 12))
-          });
-        }
-      }
+      if (showBackgroundStructure) {
+        const TYPES = [
+          { key: 'neurite', color: 0x2bff6b, name: 'Хаб нейритов', marker: 'β-III тубулин' },
+          { key: 'nucleus', color: 0x4d8bff, name: 'Ядро и сателлит', marker: 'DAPI' },
+          { key: 'soma',    color: 0xff3b6b, name: 'Тело клетки (Сома)', marker: 'MAP2' },
+        ];
 
-      // ---- Connect edges (nearest neighbors) ----
-      const edges: any[] = [];
-      const seen = new Set<string>();
-      nodes.forEach((n, i) => {
-        const near = nodes
-          .map((m, j) => ({ j, d: n.pos.distanceTo(m.pos) }))
-          .filter(o => o.j !== i)
-          .sort((a, b) => a.d - b.d)
-          .slice(0, 2);
-        
-        near.forEach(o => {
-          const k = i < o.j ? `${i}-${o.j}` : `${o.j}-${i}`;
-          if (!seen.has(k)) {
-            seen.add(k);
-            edges.push({ a: i, b: o.j });
-            nodes[i].degree++;
-            nodes[o.j].degree++;
+        const RANGE = 44;
+        const DEPTH = 14;
+
+        // ---- Generate biological structural culture nodes ----
+        const NN = 17;
+        const MIND = 15;
+        let guard = 0;
+        while (nodes.length < NN && guard < 6000) {
+          guard++;
+          const ang = Math.random() * Math.PI * 2;
+          const r = Math.pow(Math.random(), 0.7) * RANGE;
+          const p = new THREE.Vector3(Math.cos(ang) * r * 1.12, Math.sin(ang) * r * 0.82, rand(-DEPTH, DEPTH));
+          if (nodes.every(n => n.pos.distanceTo(p) > MIND)) {
+            const t = TYPES[Math.floor(Math.random() * TYPES.length)];
+            nodes.push({
+              pos: p,
+              type: t,
+              degree: 0,
+              cells: Math.floor(rand(2, 12))
+            });
           }
+        }
+
+        // ---- Connect edges (nearest neighbors) ----
+        const seen = new Set<string>();
+        nodes.forEach((n, i) => {
+          const near = nodes
+            .map((m, j) => ({ j, d: n.pos.distanceTo(m.pos) }))
+            .filter(o => o.j !== i)
+            .sort((a, b) => a.d - b.d)
+            .slice(0, 2);
+
+          near.forEach(o => {
+            const k = i < o.j ? `${i}-${o.j}` : `${o.j}-${i}`;
+            if (!seen.has(k)) {
+              seen.add(k);
+              edges.push({ a: i, b: o.j });
+              nodes[i].degree++;
+              nodes[o.j].degree++;
+            }
+          });
         });
-      });
 
-      // ---- Build connection pathways (Tubes) ----
-      edges.forEach(e => {
-        const A = nodes[e.a].pos;
-        const B = nodes[e.b].pos;
-        const mid = A.clone().lerp(B, 0.5).add(new THREE.Vector3(rand(-4, 4), rand(-4, 4), rand(-4, 4)));
-        const curve = new THREE.CatmullRomCurve3([A, A.clone().lerp(mid, 0.5), mid, mid.clone().lerp(B, 0.5), B]);
-        const mat = new THREE.MeshStandardMaterial({
-          color: 0x2bff6b,
-          emissive: 0x1f8f44,
-          emissiveIntensity: 0.5,
-          roughness: 0.6,
-          transparent: true,
-          opacity: 0.32
+        // ---- Build connection pathways (Tubes) ----
+        edges.forEach(e => {
+          const A = nodes[e.a].pos;
+          const B = nodes[e.b].pos;
+          const mid = A.clone().lerp(B, 0.5).add(new THREE.Vector3(rand(-4, 4), rand(-4, 4), rand(-4, 4)));
+          const curve = new THREE.CatmullRomCurve3([A, A.clone().lerp(mid, 0.5), mid, mid.clone().lerp(B, 0.5), B]);
+          const mat = new THREE.MeshStandardMaterial({
+            color: 0x2bff6b,
+            emissive: 0x1f8f44,
+            emissiveIntensity: 0.5,
+            roughness: 0.6,
+            transparent: true,
+            opacity: 0.32
+          });
+          const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.18, 6, false), mat);
+          graphGroup.add(tube);
+          e.mat = mat;
+          e.baseOp = 0.32;
+          e.targetOp = 0.32;
         });
-        const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.18, 6, false), mat);
-        graphGroup.add(tube);
-        e.mat = mat;
-        e.baseOp = 0.32;
-        e.targetOp = 0.32;
-      });
 
-      // ---- Build node graphics (Cores + Soft Halos) ----
-      nodes.forEach((n, i) => {
-        const size = 1.6 + n.degree * 0.55 + (n.type.key === 'neurite' ? 1.2 : 0);
-        n.size = size;
+        // ---- Build node graphics (Cores + Soft Halos) ----
+        nodes.forEach((n, i) => {
+          const size = 1.6 + n.degree * 0.55 + (n.type.key === 'neurite' ? 1.2 : 0);
+          n.size = size;
 
-        const coreMat = new THREE.MeshStandardMaterial({
-          color: n.type.color,
-          emissive: n.type.color,
-          emissiveIntensity: 0.55,
-          roughness: 0.35,
-          metalness: 0.0
+          const coreMat = new THREE.MeshStandardMaterial({
+            color: n.type.color,
+            emissive: n.type.color,
+            emissiveIntensity: 0.55,
+            roughness: 0.35,
+            metalness: 0.0
+          });
+          const core = new THREE.Mesh(new THREE.SphereGeometry(size, 28, 28), coreMat);
+          core.position.copy(n.pos);
+          core.userData = { nodeIndex: i, isUserNeuron: false };
+          graphGroup.add(core);
+
+          const haloMat = new THREE.SpriteMaterial({
+            map: glowTex,
+            color: n.type.color,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: true
+          });
+          const halo = new THREE.Sprite(haloMat);
+          halo.position.copy(n.pos);
+          halo.scale.set(size * 3.4, size * 3.4, 1);
+          graphGroup.add(halo);
+
+          n.core = core;
+          n.coreMat = coreMat;
+          n.halo = halo;
+          n.haloMat = haloMat;
+          n.baseEmiss = 0.55;
+          n.baseHaloOp = 0.5;
+          n.baseHaloScale = size * 3.4;
+          n.targetEmiss = 0.55;
+          n.targetHaloOp = 0.5;
+          n.targetHaloScale = size * 3.4;
+          n.phase = Math.random() * 6;
         });
-        const core = new THREE.Mesh(new THREE.SphereGeometry(size, 28, 28), coreMat);
-        core.position.copy(n.pos);
-        core.userData = { nodeIndex: i, isUserNeuron: false };
-        graphGroup.add(core);
 
-        const haloMat = new THREE.SpriteMaterial({
-          map: glowTex,
-          color: n.type.color,
-          transparent: true,
-          opacity: 0.5,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          depthTest: true
-        });
-        const halo = new THREE.Sprite(haloMat);
-        halo.position.copy(n.pos);
-        halo.scale.set(size * 3.4, size * 3.4, 1);
-        graphGroup.add(halo);
-
-        n.core = core;
-        n.coreMat = coreMat;
-        n.halo = halo;
-        n.haloMat = haloMat;
-        n.baseEmiss = 0.55;
-        n.baseHaloOp = 0.5;
-        n.baseHaloScale = size * 3.4;
-        n.targetEmiss = 0.55;
-        n.targetHaloOp = 0.5;
-        n.targetHaloScale = size * 3.4;
-        n.phase = Math.random() * 6;
-      });
-
-      // ---- Extra scattering of micro debris for atmosphere ----
-      for (let i = 0; i < 16; i++) {
-        const p = new THREE.Vector3(rand(-RANGE, RANGE), rand(-RANGE * 0.8, RANGE * 0.8), rand(-DEPTH, DEPTH));
-        const m = new THREE.SpriteMaterial({
-          map: glowTex,
-          color: 0x6fc0ff,
-          transparent: true,
-          opacity: 0.18,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false
-        });
-        const s = new THREE.Sprite(m);
-        s.position.copy(p);
-        s.scale.set(rand(0.6, 1.4), rand(0.6, 1.4), 1);
-        graphGroup.add(s);
+        // ---- Extra scattering of micro debris for atmosphere ----
+        for (let i = 0; i < 16; i++) {
+          const p = new THREE.Vector3(rand(-RANGE, RANGE), rand(-RANGE * 0.8, RANGE * 0.8), rand(-DEPTH, DEPTH));
+          const m = new THREE.SpriteMaterial({
+            map: glowTex,
+            color: 0x6fc0ff,
+            transparent: true,
+            opacity: 0.18,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          });
+          const s = new THREE.Sprite(m);
+          s.position.copy(p);
+          s.scale.set(rand(0.6, 1.4), rand(0.6, 1.4), 1);
+          graphGroup.add(s);
+        }
       }
 
       // ---- Setup interactive User Active Neurons ----
@@ -277,30 +288,65 @@ export function HippocampalView({
       graphGroup.add(userNeuronsGroup);
 
       const pulsers: any[] = [];
+      const userNeuronPositions: any[] = [];
 
       neurons.forEach((un, idx) => {
         const maturity = computeNeuronMaturity(un.bornAt, un.maturityLevel);
-        const baseNode = nodes[idx % nodes.length] || nodes[0];
-        // Sit organic user neurons directly offset around the template's node cells
-        const pos = baseNode.pos.clone().add(new THREE.Vector3(
-          rand(-3.2, 3.2),
-          rand(-3.2, 3.2),
-          rand(-2.4, 2.4)
-        ));
+
+        // Calculate growth animation (0-1000ms from creation)
+        const createdAt = un.createdAt || Date.now();
+        const growthProgress = Math.min(1, (Date.now() - createdAt) / 1000);
+
+        // Position neurons in a line/arc when background is hidden
+        let pos: any;
+        if (showBackgroundStructure && nodes.length > 0) {
+          const baseNode = nodes[idx % nodes.length];
+          pos = baseNode.pos.clone().add(new THREE.Vector3(
+            rand(-3.2, 3.2),
+            rand(-3.2, 3.2),
+            rand(-2.4, 2.4)
+          ));
+        } else {
+          // Simple line formation when few neurons
+          const angle = (idx / Math.max(neurons.length - 1, 1)) * Math.PI * 0.5 - Math.PI * 0.25;
+          const radius = 8 + idx * 4;
+          pos = new THREE.Vector3(
+            Math.cos(angle) * radius,
+            Math.sin(angle) * radius * 0.6,
+            0
+          );
+        }
+
+        userNeuronPositions.push(pos.clone());
 
         const nodeGroup = new THREE.Group();
         nodeGroup.position.copy(pos);
 
-        // Render user neurons as vibrant pink flashing active stars
-        const size = [2.2, 3.0, 4.2, 5.2, 6.0][maturity];
-        const color = [0xd946ef, 0x06b6d4, 0x10b981, 0x22c55e, 0xec4899][maturity];
+        // Render user neurons as vibrant colors based on maturity and intensity
+        // Scale size based on intensity (0-100 maps to 0.8-1.2x)
+        const intensityScale = 0.8 + (Math.min(un.intensity || 50, 100) / 100) * 0.4;
+        const baseSize = [2.2, 3.0, 4.2, 5.2, 6.0][maturity];
+        const size = baseSize * intensityScale * growthProgress;
+
+        // Select color palette based on intensity (more saturated for higher intensity)
+        const intensityFactor = Math.min(un.intensity || 50, 100) / 100;
+        const colorPalettes = [
+          // Low intensity (faded)
+          [0xb946ef, 0x06a8c4, 0x0c9560, 0x1ea653, 0xb44899],
+          // Medium intensity
+          [0xd946ef, 0x06b6d4, 0x10b981, 0x22c55e, 0xec4899],
+          // High intensity (vibrant)
+          [0xff00ff, 0x00ffff, 0x00ff00, 0xffff00, 0xff0099],
+        ];
+        const colorPaletteIndex = intensityFactor < 0.33 ? 0 : intensityFactor < 0.66 ? 1 : 2;
+        const color = colorPalettes[colorPaletteIndex][maturity];
 
         // Active highlighted halo
         const haloMat = new THREE.SpriteMaterial({
           map: glowTex,
           color: color,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.9 * growthProgress,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
           depthTest: true
@@ -308,17 +354,18 @@ export function HippocampalView({
         const halo = new THREE.Sprite(haloMat);
         halo.scale.set(size * 1.5, size * 1.5, 1);
         nodeGroup.add(halo);
-        pulsers.push({ obj: halo, base: size * 1.5, amp: size * 0.35, freq: 2.2, phase: idx });
+        pulsers.push({ obj: halo, base: size * 1.5, amp: size * 0.35 * growthProgress, freq: 2.2, phase: idx, growthProgress: { current: growthProgress } });
 
         // Glowing nucleus
-        const nuc = new THREE.Sprite(new THREE.SpriteMaterial({
+        const nucMat = new THREE.SpriteMaterial({
           map: glowTex,
           color: 0xffffff,
           transparent: true,
-          opacity: 0.95,
+          opacity: 0.95 * growthProgress,
           blending: THREE.AdditiveBlending,
           depthWrite: false
-        }));
+        });
+        const nuc = new THREE.Sprite(nucMat);
         nuc.position.set(rand(-0.4, 0.4), rand(-0.4, 0.4), 0.3);
         nuc.scale.set(size * 0.7, size * 0.7, 1);
         nodeGroup.add(nuc);
@@ -344,6 +391,45 @@ export function HippocampalView({
         userNeuronsGroup.add(nodeGroup);
       });
 
+      // Draw axon connections between sequential user neurons across the full width
+      if (userNeuronPositions.length > 1 && !showBackgroundStructure) {
+        for (let i = 0; i < userNeuronPositions.length - 1; i++) {
+          const startPos = userNeuronPositions[i];
+          const endPos = userNeuronPositions[i + 1];
+
+          // Determine axon color based on connection maturity
+          const startMaturity = computeNeuronMaturity(neurons[i].bornAt, neurons[i].maturityLevel);
+          const endMaturity = computeNeuronMaturity(neurons[i + 1].bornAt, neurons[i + 1].maturityLevel);
+          const avgMaturity = (startMaturity + endMaturity) / 2;
+
+          // Color gradient: younger=cyan, older=green/yellow
+          let axonColor = 0x06b6d4; // default cyan
+          if (avgMaturity >= 2) axonColor = 0x10b981; // green
+          if (avgMaturity >= 3.5) axonColor = 0x22c55e; // bright green
+
+          // Create a smooth curve that spans across the banner
+          const midX = (startPos.x + endPos.x) / 2;
+          const curvePoints = [
+            startPos,
+            new THREE.Vector3(startPos.x + (endPos.x - startPos.x) * 0.25, startPos.y + 6, 0),
+            new THREE.Vector3(midX, Math.max(startPos.y, endPos.y) + 8, 0),
+            new THREE.Vector3(startPos.x + (endPos.x - startPos.x) * 0.75, endPos.y + 6, 0),
+            endPos
+          ];
+
+          const curve = new THREE.CatmullRomCurve3(curvePoints);
+          const axonMat = new THREE.MeshStandardMaterial({
+            color: axonColor,
+            emissive: axonColor,
+            emissiveIntensity: 0.5 + (avgMaturity * 0.1),
+            transparent: true,
+            opacity: 0.6 + (avgMaturity * 0.1)
+          });
+          const axon = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.5, 8, false), axonMat);
+          graphGroup.add(axon);
+        }
+      }
+
       // 9. Hover raycast, mouse dragging, scrolling and coordinate projection
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
@@ -359,7 +445,7 @@ export function HippocampalView({
       let last = { x: 0, y: 0 };
       let targetCameraZ = 64;
 
-      const setHoverState = (nodeIdx: number, userNeuronHit: any) => {
+      const setHoverState = (nodeIdx: number, userNeuronHit: any, mouseX?: number, mouseY?: number) => {
         hoveredNodeIndex = nodeIdx;
         hoveredUserNeuron = userNeuronHit;
 
@@ -372,6 +458,7 @@ export function HippocampalView({
             labelEl.style.display = 'block';
           }
           container.style.cursor = 'pointer';
+          setTooltipData(null);
 
           const neighbours = new Set<number>([nodeIdx]);
           edges.forEach(e => {
@@ -398,6 +485,20 @@ export function HippocampalView({
           }
           container.style.cursor = 'pointer';
 
+          // Show tooltip for user neuron
+          if (mouseX !== undefined && mouseY !== undefined) {
+            const days = Math.floor((Date.now() - new Date(neuron.bornAt).getTime()) / (1000 * 60 * 60 * 24));
+            const tooltipInfo: NeuronTooltipData = {
+              bornAt: neuron.bornAt,
+              phaseName: phaseNames[neuron.phaseId] || `Фаза ${neuron.phaseId + 1}`,
+              days,
+              intensity: neuron.intensity,
+              maturityStage: MATURITY_LABELS[maturity],
+            };
+            setTooltipData(tooltipInfo);
+            setTooltipPos({ x: mouseX, y: mouseY });
+          }
+
           // Dim structural network slightly to make active user neuron pop
           nodes.forEach(n => {
             n.targetEmiss = 0.15;
@@ -410,6 +511,7 @@ export function HippocampalView({
         } else {
           if (labelEl) labelEl.style.display = 'none';
           container.style.cursor = isDragging ? 'grabbing' : 'grab';
+          setTooltipData(null);
 
           // Reset all path and node highlights to default levels
           nodes.forEach(n => {
@@ -450,7 +552,7 @@ export function HippocampalView({
         if (userHits.length > 0) {
           const matchedTarget = userHits[0].object;
           if (matchedTarget !== hoveredUserNeuron) {
-            setHoverState(-1, matchedTarget);
+            setHoverState(-1, matchedTarget, e.clientX, e.clientY);
           }
           return;
         }
@@ -497,12 +599,41 @@ export function HippocampalView({
         targetCameraZ = Math.min(130, Math.max(26, targetCameraZ));
       };
 
-      const handleResetKey = (e: KeyboardEvent) => {
+      let selectedNeuronIndex = -1;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
         if (e.code === 'KeyR' || e.code === 'KeyH') {
+          // Reset view
           targetCameraZ = 64;
           target.x = 0.05;
           target.y = 0;
           setHoverState(-1, null);
+          selectedNeuronIndex = -1;
+        } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown') {
+          // Navigate to next neuron
+          e.preventDefault();
+          selectedNeuronIndex = Math.min(selectedNeuronIndex + 1, neurons.length - 1);
+          if (selectedNeuronIndex >= 0 && selectedNeuronIndex < userNeuronTargets.length) {
+            const target = userNeuronTargets[selectedNeuronIndex];
+            setHoverState(-1, target);
+          }
+        } else if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') {
+          // Navigate to previous neuron
+          e.preventDefault();
+          selectedNeuronIndex = Math.max(selectedNeuronIndex - 1, 0);
+          if (selectedNeuronIndex >= 0 && selectedNeuronIndex < userNeuronTargets.length) {
+            const target = userNeuronTargets[selectedNeuronIndex];
+            setHoverState(-1, target);
+          }
+        } else if (e.code === 'Enter' && selectedNeuronIndex >= 0) {
+          // Select/click current neuron
+          if (selectedNeuronIndex < userNeuronTargets.length) {
+            const matchedTarget = userNeuronTargets[selectedNeuronIndex];
+            const { neuron, maturity } = matchedTarget.userData;
+            const enriched = { ...neuron, maturityLevel: maturity };
+            setSelected(prev => (prev?.id === enriched.id ? null : enriched));
+            onNeuronTap?.(enriched);
+          }
         }
       };
 
@@ -510,14 +641,14 @@ export function HippocampalView({
       container.addEventListener('pointermove', handlePointerMove);
       window.addEventListener('pointerup', handlePointerUp);
       container.addEventListener('wheel', handleWheel, { passive: false });
-      window.addEventListener('keydown', handleResetKey);
+      window.addEventListener('keydown', handleKeyDown);
 
       innerCleanup = () => {
         container.removeEventListener('pointerdown', handlePointerDown);
         container.removeEventListener('pointermove', handlePointerMove);
         window.removeEventListener('pointerup', handlePointerUp);
         container.removeEventListener('wheel', handleWheel);
-        window.removeEventListener('keydown', handleResetKey);
+        window.removeEventListener('keydown', handleKeyDown);
         
         graphGroup.traverse((obj: any) => {
           if (obj.geometry) {
@@ -726,30 +857,79 @@ export function HippocampalView({
 
         {/* Empty state bottom line */}
         {isEmpty && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-            <p
-              className="font-mono text-[11px] text-center max-w-[240px] leading-relaxed px-4 py-2 rounded-xl backdrop-blur-md"
-              style={{
-                color: 'rgba(150,220,185,0.55)',
-                background: 'rgba(5, 14, 10,0.6)',
-                border: '1px solid rgba(150,220,185,0.1)'
-              }}
-            >
-              Первый нейрон родится после вашей первой сессии
-            </p>
-          </div>
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <div className="text-center space-y-3">
+              <div className="flex justify-center gap-1.5">
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: '#36ff6b', boxShadow: '0 0 8px #36ff6b' }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: '#06b6d4', boxShadow: '0 0 8px #06b6d4' }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+                />
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: '#ec4899', boxShadow: '0 0 8px #ec4899' }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+                />
+              </div>
+              <p
+                className="font-mono text-[11px] text-center max-w-[240px] leading-relaxed px-4 py-2 rounded-xl backdrop-blur-md"
+                style={{
+                  color: 'rgba(150,220,185,0.75)',
+                  background: 'rgba(5, 14, 10,0.8)',
+                  border: '1px solid rgba(150,220,185,0.2)'
+                }}
+              >
+                Первый нейрон родится после вашей первой сессии
+              </p>
+            </div>
+          </motion.div>
         )}
 
         {/* Control hint overlay */}
-        <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 select-none">
-          <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
-            R — сброс камеры
-          </span>
-          <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
-            Drag — вращение
-          </span>
+        <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-10 select-none">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              R — сброс камеры
+            </span>
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              Drag — вращение
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              ← → — навигация
+            </span>
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              Enter — выбрать
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Neuron Tooltip */}
+      <NeuronTooltip
+        data={tooltipData || {
+          bornAt: '',
+          phaseName: '',
+          days: 0,
+          maturityStage: '',
+        }}
+        isVisible={tooltipData !== null}
+        x={tooltipPos.x}
+        y={tooltipPos.y}
+      />
 
       {/* Detail Bottom Sheet for selected logged memories */}
       <AnimatePresence>

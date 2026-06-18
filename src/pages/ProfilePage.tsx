@@ -12,7 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, Achievement } from '../data/achievements';
 import { TIER_CONFIG } from '../data/subscription';
 import { PHASES } from '../data/phases';
-import { HippocampalView, Neuron } from '../components/neuro';
+import { HippocampalView, Neuron, NeuronStats, NeuronStatsData } from '../components/neuro';
 
 const PHASE_NAMES: Record<number, string> = Object.fromEntries(
   PHASES.map(p => [p.id, p.subtitle])
@@ -326,6 +326,8 @@ export function ProfilePage() {
         maturityLevel: 0, // dynamic maturity is derived from bornAt inside the HippocampalView component
         x: 20 + (i / Math.max(completedCycles.length - 1, 1)) * 420,
         connections: [],
+        intensity: cycle.avgIntensity,
+        createdAt: new Date(cycle.completedAt).getTime(),
       };
     });
   }, [completedCycles]);
@@ -535,6 +537,26 @@ export function ProfilePage() {
                   Новые нейроны рождаются во время каждой рефлексии
                 </p>
               )}
+
+              {/* Neurogenesis Statistics */}
+              {myNeurons.length > 0 && (() => {
+                const avgAge = myNeurons.length > 0
+                  ? myNeurons.reduce((sum, n) => {
+                      const ageMs = Date.now() - new Date(n.bornAt).getTime();
+                      return sum + Math.floor(ageMs / (1000 * 60 * 60 * 24));
+                    }, 0) / myNeurons.length
+                  : 0;
+
+                const statsData: NeuronStatsData = {
+                  total: myNeurons.length,
+                  active: myNeurons.length,
+                  integrated: Math.floor(myNeurons.length * 0.4),
+                  dormant: 0,
+                  avgAge: avgAge,
+                };
+
+                return <NeuronStats data={statsData} />;
+              })()}
             </motion.div>
           )}
 
