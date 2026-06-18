@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
+</helmet>
+<div style="width:100%; height:100vh; background:#000; display:flex; align-items:center; justify-content:center; font-family:'Inter', sans-serif; color:#e0e0e0; overflow:hidden; position:relative;">
+  <canvas id="canvas" style="display:block; width:100%; height:100%; position:absolute; inset:0;"></canvas>
+
+  <div style="position:absolute; top:24px; left:24px; z-index:10; padding:20px 22px; background:rgba(10,10,12,0.55); backdrop-filter:blur(14px); border:1px solid rgba(255,80,80,0.25); border-radius:14px; max-width:360px; box-shadow:0 0 40px rgba(255,40,40,0.08);">
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:2.5px; color:#ff5a5a; margin-bottom:12px;">TAROZZ · NEURO 3D</div>
+    <h2 style="font-size:25px; font-weight:600; margin:0 0 12px 0; color:#fff; letter-spacing:-0.3px;">Аксон и конус роста</h2>
+    <p style="font-size:13px; line-height:1.55; color:#9aa0aa; margin:0;">Иммунофлуоресценция: пучок нейрофиламентов (красный) расходится в актиновый конус роста (зелёный) с филоподиями.</p>
+  </div>
+
+  <div style="position:absolute; top:24px; right:24px; z-index:10; padding:20px 22px; background:rgba(10,10,12,0.55); backdrop-filter:blur(14px); border:1px solid rgba(80,255,120,0.22); border-radius:14px; max-width:230px;">
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:2.5px; color:#5aff8c; margin-bottom:12px;">КАНАЛЫ</div>
+    <div style="font-size:12px; line-height:2; color:#dfe3ea;">
+      <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 8px #ff3b3b;margin-right:8px;"></span>β-III тубулин · аксон</div>
+      <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#36ff6b;box-shadow:0 0 8px #36ff6b;margin-right:8px;"></span>F-актин · конус роста</div>
+      <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ffd23b;box-shadow:0 0 8px #ffd23b;margin-right:8px;"></span>Зона перекрытия</div>
+    </div>
+  </div>
+
+  <div style="position:absolute; bottom:24px; left:24px; z-index:10; padding:14px 20px; background:rgba(10,10,12,0.55); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.12); border-radius:14px; font-size:12px; color:#9aa0aa;">
+    <strong style="color:#fff;">Управление:</strong> Drag — вращение · Scroll — зум · R — сброс
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    if (typeof THREE === 'undefined') {
+      const wait = setInterval(() => {
+        if (typeof THREE !== 'undefined') { clearInterval(wait); this.init(); }
+      }, 50);
+      return;
+    }
+    this.init();
+  }
+
+  init() {
+    const canvas = document.getElementById('canvas');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    const W = () => window.innerWidth, H = () => window.innerHeight;
+    const camera = new THREE.PerspectiveCamera(60, W() / H(), 0.1, 2000);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(W(), H());
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const HOME = new THREE.Vector3(2, 0, 42);
+    camera.position.copy(HOME);
+    camera.lookAt(0, 0, 0);
+
+    const root = new THREE.Group();
+    scene.add(root);
+
+    // faint background nebula glow
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x0a0306, transparent: true, opacity: 0.6 });
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), bgMat);
+    bg.position.z = -60; scene.add(bg);
+
+    // ---- glow sprite texture ----
+    const glowTex = (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    })();
+    const addHalo = (pos, size, color, opacity) => {
+      const m = new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+      const s = new THREE.Sprite(m); s.position.copy(pos); s.scale.set(size, size, 1);
+      root.add(s); return s;
+    };
+
+    const pulsers = []; // {obj, base, amp, freq, phase}
+
+    // ---- fiber bundle builder ----
+    const tubeMat = (color, opacity) => new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false
+    });
+
+    function buildBundle(ctrlPts, opts) {
+      const base = new THREE.CatmullRomCurve3(ctrlPts.map(p => new THREE.Vector3(...p)));
+      const N = 120;
+      // precompute frame
+      const pts = [], tans = [];
+      for (let i = 0; i <= N; i++) { const t = i / N; pts.push(base.getPoint(t)); tans.push(base.getTangent(t)); }
+      const group = new THREE.Group();
+
+      for (let f = 0; f < opts.count; f++) {
+        const phase = (f / opts.count) * Math.PI * 2;
+        const turns = opts.turns;
+        const fr = opts.radius * (0.55 + Math.random() * 0.9);
+        const fiberPts = [];
+        for (let i = 0; i <= N; i++) {
+          const t = i / N;
+          const P = pts[i], T = tans[i];
+          const perpA = new THREE.Vector3(-T.y, T.x, 0).normalize();
+          const perpB = new THREE.Vector3().crossVectors(T, perpA).normalize();
+          const ang = t * turns * Math.PI * 2 + phase;
+          // taper: fan out near the end (growth cone)
+          const spread = fr * (1 + Math.pow(t, 3) * opts.fan);
+          const wobble = Math.sin(t * 9 + f) * 0.12;
+          fiberPts.push(P.clone()
+            .addScaledVector(perpA, Math.cos(ang) * spread + wobble)
+            .addScaledVector(perpB, Math.sin(ang) * spread));
+        }
+        const curve = new THREE.CatmullRomCurve3(fiberPts);
+        const coreR = opts.coreR * (0.6 + Math.random() * 0.7);
+        const core = new THREE.Mesh(new THREE.TubeGeometry(curve, 100, coreR, 6, false), tubeMat(opts.color, 0.9));
+        const halo = new THREE.Mesh(new THREE.TubeGeometry(curve, 60, coreR * 3.4, 6, false), tubeMat(opts.color, 0.12));
+        group.add(core); group.add(halo);
+      }
+      root.add(group);
+      return { base, endPt: pts[N], endTan: tans[N] };
+    }
+
+    // ---- growth cone (green actin fan + filopodia) ----
+    function buildGrowthCone(center, dir, scale) {
+      const D = dir.clone().normalize();
+      const up = new THREE.Vector3(0, 0, 1);
+      const side = new THREE.Vector3().crossVectors(D, up).normalize();
+      const side2 = new THREE.Vector3().crossVectors(D, side).normalize();
+
+      // lamellipodium diffuse blob
+      const lam = addHalo(center, 11 * scale, 0x2bff5e, 0.5);
+      pulsers.push({ obj: lam, base: 11 * scale, amp: 1.4, freq: 1.3, phase: Math.random() * 6 });
+      addHalo(center.clone().addScaledVector(D, 1.5 * scale), 7 * scale, 0x9dff5a, 0.35);
+
+      // yellow overlap where red meets green
+      addHalo(center.clone().addScaledVector(D, -2 * scale), 6 * scale, 0xffd23b, 0.45);
+
+      const fmat = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+
+      const nFil = 46;
+      for (let i = 0; i < nFil; i++) {
+        // fan direction: spread around D within a cone
+        const a = (Math.random() - 0.5) * 2.4;       // azimuth spread
+        const b = (Math.random() - 0.5) * 1.7;       // elevation spread
+        const len = (2.4 + Math.random() * 5.5) * scale;
+        const dirF = D.clone()
+          .addScaledVector(side, Math.sin(a) * 1.1)
+          .addScaledVector(side2, Math.sin(b) * 0.9)
+          .normalize();
+        const baseOff = center.clone()
+          .addScaledVector(side, (Math.random() - 0.5) * 4 * scale)
+          .addScaledVector(side2, (Math.random() - 0.5) * 3.5 * scale)
+          .addScaledVector(D, (Math.random() * 1.5) * scale);
+        const segs = 5;
+        const fp = [];
+        for (let s = 0; s <= segs; s++) {
+          const tt = s / segs;
+          fp.push(baseOff.clone()
+            .addScaledVector(dirF, len * tt)
+            .addScaledVector(side, Math.sin(tt * 4 + i) * 0.25 * scale)
+            .addScaledVector(side2, Math.cos(tt * 3 + i) * 0.2 * scale));
+        }
+        const fc = new THREE.CatmullRomCurve3(fp);
+        const r = (0.05 + Math.random() * 0.05) * scale;
+        const col = i % 7 === 0 ? 0xeaff6a : 0x36ff6b;
+        const core = new THREE.Mesh(new THREE.TubeGeometry(fc, 24, r, 5, false), fmat(col, 0.95));
+        const halo = new THREE.Mesh(new THREE.TubeGeometry(fc, 16, r * 3.5, 5, false), fmat(col, 0.14));
+        root.add(core); root.add(halo);
+        // tip glow
+        const tip = addHalo(fp[segs], (0.8 + Math.random()) * scale, col, 0.5);
+        pulsers.push({ obj: tip, base: tip.scale.x, amp: 0.5, freq: 1.5 + Math.random(), phase: Math.random() * 6 });
+      }
+    }
+
+    // ===== NEURON 1 (top) =====
+    const n1 = buildBundle([
+      [-26, -2, -2], [-18, 0, 1], [-10, 1.5, -1], [-3, 3, 0.5], [3, 5, 0], [7, 6.5, -0.5]
+    ], { count: 14, radius: 0.55, coreR: 0.16, turns: 3.2, fan: 2.6, color: 0xff2e2e });
+    buildGrowthCone(n1.endPt, n1.endTan, 1.05);
+
+    // ===== NEURON 2 (bottom) =====
+    const n2 = buildBundle([
+      [-22, -16, 1], [-16, -13, -1], [-9, -9, 0.5], [-2, -6, -0.5], [5, -3, 0], [10, -1, 0.5]
+    ], { count: 13, radius: 0.5, coreR: 0.15, turns: 2.8, fan: 2.4, color: 0xff2e2e });
+    buildGrowthCone(n2.endPt, n2.endTan, 0.95);
+
+    // axon-body halos along shafts for glow
+    [n1, n2].forEach(n => {
+      for (let i = 0; i <= 10; i++) {
+        const p = n.base.getPoint(i / 10);
+        const h = addHalo(p, 3.2, 0xff2020, 0.16);
+        if (i % 3 === 0) pulsers.push({ obj: h, base: 3.2, amp: 0.5, freq: 1.1, phase: i });
+      }
+    });
+
+    // floating debris specks (like the reference background)
+    for (let i = 0; i < 16; i++) {
+      const p = new THREE.Vector3((Math.random() - 0.5) * 55, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 12);
+      addHalo(p, 0.5 + Math.random() * 0.8, Math.random() > 0.5 ? 0xff3030 : 0x30ff60, 0.4);
+    }
+
+    // ---- animation ----
+    let time = 0;
+    let rot = { x: 0, y: 0 };
+    let target = { x: 0.1, y: -0.15 };
+    let dragging = false, last = { x: 0, y: 0 };
+    let autoSpin = true;
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      time += 0.016;
+      if (autoSpin && !dragging) target.y += 0.0015;
+      rot.x += (target.x - rot.x) * 0.08;
+      rot.y += (target.y - rot.y) * 0.08;
+      root.rotation.x = rot.x;
+      root.rotation.y = rot.y;
+
+      pulsers.forEach(p => {
+        const s = p.base + Math.sin(time * p.freq + p.phase) * p.amp;
+        if (p.obj.scale) p.obj.scale.set(s, s, 1);
+      });
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // ---- controls ----
+    const onDown = (e) => { dragging = true; last = { x: e.clientX, y: e.clientY }; };
+    const onUp = () => { dragging = false; };
+    const onMove = (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - last.x, dy = e.clientY - last.y;
+      target.y += dx * 0.006;
+      target.x += dy * 0.006;
+      target.x = Math.max(-1.2, Math.min(1.2, target.x));
+      last = { x: e.clientX, y: e.clientY };
+    };
+    const onWheel = (e) => {
+      e.preventDefault();
+      const dir = camera.position.clone().normalize();
+      const d = camera.position.length() + e.deltaY * 0.03;
+      camera.position.copy(dir.multiplyScalar(Math.max(18, Math.min(90, d))));
+      camera.lookAt(0, 0, 0);
+    };
+    const onKey = (e) => {
+      if (e.code === 'KeyR') { camera.position.copy(HOME); camera.lookAt(0, 0, 0); target = { x: 0.1, y: -0.15 }; }
+    };
+    const onResize = () => { camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H()); };
+
+    canvas.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointermove', onMove);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      canvas.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
+    };
+  }
+
+  renderVals() { return {}; }
+}
+
+</script>
+</body>
+</html>

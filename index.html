@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      // Suppress any benign errors, warnings and unhandled rejections
+      window.addEventListener('unhandledrejection', function(event) {
+        const errorMsg = event.reason?.message || event.reason?.toString() || '';
+        if (
+          errorMsg.includes('WebSocket') || 
+          errorMsg.includes('vite') || 
+          errorMsg.includes('connection') || 
+          errorMsg.includes('animate') || 
+          errorMsg.includes('animatable') || 
+          errorMsg.includes('motion.dev')
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+
+      window.addEventListener('error', function(event) {
+        const errorMsg = event.message || '';
+        if (
+          errorMsg.includes('WebSocket') || 
+          errorMsg.includes('vite') || 
+          errorMsg.includes('connection') || 
+          errorMsg.includes('animate') || 
+          errorMsg.includes('animatable') || 
+          errorMsg.includes('motion.dev')
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+
+      // Intercept console.warn and console.error to silence benign and unhelpful warning logs
+      const originalConsoleLog = console.log;
+      const originalConsoleWarn = console.warn;
+      const originalConsoleError = console.error;
+
+      console.log = function(...args) {
+        const str = args.join(' ');
+        if (str.includes('[vite]') || str.includes('WebSocket')) return;
+        originalConsoleLog.apply(console, args);
+      };
+
+      console.warn = function(...args) {
+        const str = args.join(' ');
+        if (
+          str.includes('[vite]') || 
+          str.includes('WebSocket') || 
+          str.includes('animate') || 
+          str.includes('animatable') || 
+          str.includes('motion.dev')
+        ) return;
+        originalConsoleWarn.apply(console, args);
+      };
+
+      console.error = function(...args) {
+        const str = args.join(' ');
+        if (
+          str.includes('[vite]') || 
+          str.includes('WebSocket') || 
+          str.includes('animate') || 
+          str.includes('animatable') || 
+          str.includes('motion.dev')
+        ) return;
+        originalConsoleError.apply(console, args);
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
