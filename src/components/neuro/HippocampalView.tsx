@@ -322,12 +322,24 @@ export function HippocampalView({
         const nodeGroup = new THREE.Group();
         nodeGroup.position.copy(pos);
 
-        // Render user neurons as vibrant colors based on maturity
+        // Render user neurons as vibrant colors based on maturity and intensity
         // Scale size based on intensity (0-100 maps to 0.8-1.2x)
         const intensityScale = 0.8 + (Math.min(un.intensity || 50, 100) / 100) * 0.4;
         const baseSize = [2.2, 3.0, 4.2, 5.2, 6.0][maturity];
         const size = baseSize * intensityScale * growthProgress;
-        const color = [0xd946ef, 0x06b6d4, 0x10b981, 0x22c55e, 0xec4899][maturity];
+
+        // Select color palette based on intensity (more saturated for higher intensity)
+        const intensityFactor = Math.min(un.intensity || 50, 100) / 100;
+        const colorPalettes = [
+          // Low intensity (faded)
+          [0xb946ef, 0x06a8c4, 0x0c9560, 0x1ea653, 0xb44899],
+          // Medium intensity
+          [0xd946ef, 0x06b6d4, 0x10b981, 0x22c55e, 0xec4899],
+          // High intensity (vibrant)
+          [0xff00ff, 0x00ffff, 0x00ff00, 0xffff00, 0xff0099],
+        ];
+        const colorPaletteIndex = intensityFactor < 0.33 ? 0 : intensityFactor < 0.66 ? 1 : 2;
+        const color = colorPalettes[colorPaletteIndex][maturity];
 
         // Active highlighted halo
         const haloMat = new THREE.SpriteMaterial({
@@ -385,6 +397,16 @@ export function HippocampalView({
           const startPos = userNeuronPositions[i];
           const endPos = userNeuronPositions[i + 1];
 
+          // Determine axon color based on connection maturity
+          const startMaturity = computeNeuronMaturity(neurons[i].bornAt, neurons[i].maturityLevel);
+          const endMaturity = computeNeuronMaturity(neurons[i + 1].bornAt, neurons[i + 1].maturityLevel);
+          const avgMaturity = (startMaturity + endMaturity) / 2;
+
+          // Color gradient: younger=cyan, older=green/yellow
+          let axonColor = 0x06b6d4; // default cyan
+          if (avgMaturity >= 2) axonColor = 0x10b981; // green
+          if (avgMaturity >= 3.5) axonColor = 0x22c55e; // bright green
+
           // Create a smooth curve that spans across the banner
           const midX = (startPos.x + endPos.x) / 2;
           const curvePoints = [
@@ -397,11 +419,11 @@ export function HippocampalView({
 
           const curve = new THREE.CatmullRomCurve3(curvePoints);
           const axonMat = new THREE.MeshStandardMaterial({
-            color: 0x06b6d4,
-            emissive: 0x06b6d4,
-            emissiveIntensity: 0.5,
+            color: axonColor,
+            emissive: axonColor,
+            emissiveIntensity: 0.5 + (avgMaturity * 0.1),
             transparent: true,
-            opacity: 0.7
+            opacity: 0.6 + (avgMaturity * 0.1)
           });
           const axon = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.5, 8, false), axonMat);
           graphGroup.add(axon);
