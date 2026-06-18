@@ -828,18 +828,44 @@ export function HippocampalView({
 
         {/* Empty state bottom line */}
         {isEmpty && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-            <p
-              className="font-mono text-[11px] text-center max-w-[240px] leading-relaxed px-4 py-2 rounded-xl backdrop-blur-md"
-              style={{
-                color: 'rgba(150,220,185,0.55)',
-                background: 'rgba(5, 14, 10,0.6)',
-                border: '1px solid rgba(150,220,185,0.1)'
-              }}
-            >
-              Первый нейрон родится после вашей первой сессии
-            </p>
-          </div>
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <div className="text-center space-y-3">
+              <div className="flex justify-center gap-1.5">
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: '#36ff6b', boxShadow: '0 0 8px #36ff6b' }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: '#06b6d4', boxShadow: '0 0 8px #06b6d4' }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+                />
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: '#ec4899', boxShadow: '0 0 8px #ec4899' }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+                />
+              </div>
+              <p
+                className="font-mono text-[11px] text-center max-w-[240px] leading-relaxed px-4 py-2 rounded-xl backdrop-blur-md"
+                style={{
+                  color: 'rgba(150,220,185,0.75)',
+                  background: 'rgba(5, 14, 10,0.8)',
+                  border: '1px solid rgba(150,220,185,0.2)'
+                }}
+              >
+                Первый нейрон родится после вашей первой сессии
+              </p>
+            </div>
+          </motion.div>
         )}
 
         {/* Control hint overlay */}
