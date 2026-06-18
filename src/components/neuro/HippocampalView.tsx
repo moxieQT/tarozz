@@ -366,22 +366,31 @@ export function HippocampalView({
         userNeuronsGroup.add(nodeGroup);
       });
 
-      // Draw axon connections between sequential user neurons
+      // Draw axon connections between sequential user neurons across the full width
       if (userNeuronPositions.length > 1 && !showBackgroundStructure) {
         for (let i = 0; i < userNeuronPositions.length - 1; i++) {
           const startPos = userNeuronPositions[i];
           const endPos = userNeuronPositions[i + 1];
-          const mid = startPos.clone().lerp(endPos, 0.5).add(new THREE.Vector3(0, 2, 0));
 
-          const curve = new THREE.CatmullRomCurve3([startPos, startPos.clone().lerp(mid, 0.5), mid, mid.clone().lerp(endPos, 0.5), endPos]);
+          // Create a smooth curve that spans across the banner
+          const midX = (startPos.x + endPos.x) / 2;
+          const curvePoints = [
+            startPos,
+            new THREE.Vector3(startPos.x + (endPos.x - startPos.x) * 0.25, startPos.y + 6, 0),
+            new THREE.Vector3(midX, Math.max(startPos.y, endPos.y) + 8, 0),
+            new THREE.Vector3(startPos.x + (endPos.x - startPos.x) * 0.75, endPos.y + 6, 0),
+            endPos
+          ];
+
+          const curve = new THREE.CatmullRomCurve3(curvePoints);
           const axonMat = new THREE.MeshStandardMaterial({
             color: 0x06b6d4,
             emissive: 0x06b6d4,
-            emissiveIntensity: 0.4,
+            emissiveIntensity: 0.5,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.7
           });
-          const axon = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.35, 6, false), axonMat);
+          const axon = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.5, 8, false), axonMat);
           graphGroup.add(axon);
         }
       }
