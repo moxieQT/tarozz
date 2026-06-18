@@ -31,6 +31,8 @@ export function NeuronTooltip({ data, isVisible, x = 0, y = 0 }: NeuronTooltipPr
           exit={{ opacity: 0, scale: 0.9, y: -10 }}
           transition={{ duration: 0.2 }}
           className="fixed z-[1000] pointer-events-none"
+          role="tooltip"
+          aria-label="Neuron information"
           style={{
             left: `${x}px`,
             top: `${y}px`,
@@ -47,15 +49,15 @@ export function NeuronTooltip({ data, isVisible, x = 0, y = 0 }: NeuronTooltipPr
           >
             {/* Title */}
             <div className="flex items-center gap-2 pb-2" style={{ borderBottom: '1px solid var(--glass-border)' }}>
-              <Brain size={14} style={{ color: 'var(--accent)' }} />
-              <span className="font-mono text-[10px] uppercase tracking-wider font-bold">
+              <Brain size={14} style={{ color: 'var(--accent)' }} aria-hidden="true" />
+              <h2 className="font-mono text-[10px] uppercase tracking-wider font-bold">
                 Нейрон
-              </span>
+              </h2>
             </div>
 
             {/* Date */}
             <div className="flex items-center gap-2">
-              <Calendar size={12} style={{ color: 'var(--ink3)' }} />
+              <Calendar size={12} style={{ color: 'var(--ink3)' }} aria-hidden="true" />
               <span className="font-mono text-[9px]" style={{ color: 'var(--ink2)' }}>
                 Рожден: <span style={{ color: 'var(--accent)' }}>{dateStr}</span>
               </span>
@@ -63,7 +65,7 @@ export function NeuronTooltip({ data, isVisible, x = 0, y = 0 }: NeuronTooltipPr
 
             {/* Phase */}
             <div className="flex items-center gap-2">
-              <Zap size={12} style={{ color: 'var(--ink3)' }} />
+              <Zap size={12} style={{ color: 'var(--ink3)' }} aria-hidden="true" />
               <span className="font-mono text-[9px]" style={{ color: 'var(--ink2)' }}>
                 Фаза: <span style={{ color: 'var(--accent)' }}>{data.phaseName}</span>
               </span>
@@ -71,7 +73,7 @@ export function NeuronTooltip({ data, isVisible, x = 0, y = 0 }: NeuronTooltipPr
 
             {/* Age */}
             <div className="flex items-center gap-2">
-              <Clock size={12} style={{ color: 'var(--ink3)' }} />
+              <Clock size={12} style={{ color: 'var(--ink3)' }} aria-hidden="true" />
               <span className="font-mono text-[9px]" style={{ color: 'var(--ink2)' }}>
                 Возраст: <span style={{ color: 'var(--accent)' }}>{Math.round(data.days)} дн.</span>
               </span>
