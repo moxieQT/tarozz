@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { NeuronTooltip, NeuronTooltipData } from './NeuronTooltip';
 
 export interface Neuron {
   id: string;
@@ -68,6 +69,8 @@ export function HippocampalView({
 
   const [selected, setSelected] = useState<Neuron | null>(null);
   const [threeLoaded, setThreeLoaded] = useState(false);
+  const [tooltipData, setTooltipData] = useState<NeuronTooltipData | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     let active = true;
@@ -410,7 +413,7 @@ export function HippocampalView({
       let last = { x: 0, y: 0 };
       let targetCameraZ = 64;
 
-      const setHoverState = (nodeIdx: number, userNeuronHit: any) => {
+      const setHoverState = (nodeIdx: number, userNeuronHit: any, mouseX?: number, mouseY?: number) => {
         hoveredNodeIndex = nodeIdx;
         hoveredUserNeuron = userNeuronHit;
 
@@ -423,6 +426,7 @@ export function HippocampalView({
             labelEl.style.display = 'block';
           }
           container.style.cursor = 'pointer';
+          setTooltipData(null);
 
           const neighbours = new Set<number>([nodeIdx]);
           edges.forEach(e => {
@@ -449,6 +453,19 @@ export function HippocampalView({
           }
           container.style.cursor = 'pointer';
 
+          // Show tooltip for user neuron
+          if (mouseX !== undefined && mouseY !== undefined) {
+            const days = Math.floor((Date.now() - new Date(neuron.bornAt).getTime()) / (1000 * 60 * 60 * 24));
+            const tooltipInfo: NeuronTooltipData = {
+              bornAt: neuron.bornAt,
+              phaseName: phaseNames[neuron.phaseId] || `Фаза ${neuron.phaseId + 1}`,
+              days,
+              maturityStage: MATURITY_LABELS[maturity],
+            };
+            setTooltipData(tooltipInfo);
+            setTooltipPos({ x: mouseX, y: mouseY });
+          }
+
           // Dim structural network slightly to make active user neuron pop
           nodes.forEach(n => {
             n.targetEmiss = 0.15;
@@ -461,6 +478,7 @@ export function HippocampalView({
         } else {
           if (labelEl) labelEl.style.display = 'none';
           container.style.cursor = isDragging ? 'grabbing' : 'grab';
+          setTooltipData(null);
 
           // Reset all path and node highlights to default levels
           nodes.forEach(n => {
@@ -501,7 +519,7 @@ export function HippocampalView({
         if (userHits.length > 0) {
           const matchedTarget = userHits[0].object;
           if (matchedTarget !== hoveredUserNeuron) {
-            setHoverState(-1, matchedTarget);
+            setHoverState(-1, matchedTarget, e.clientX, e.clientY);
           }
           return;
         }
@@ -801,6 +819,19 @@ export function HippocampalView({
           </span>
         </div>
       </div>
+
+      {/* Neuron Tooltip */}
+      <NeuronTooltip
+        data={tooltipData || {
+          bornAt: '',
+          phaseName: '',
+          days: 0,
+          maturityStage: '',
+        }}
+        isVisible={tooltipData !== null}
+        x={tooltipPos.x}
+        y={tooltipPos.y}
+      />
 
       {/* Detail Bottom Sheet for selected logged memories */}
       <AnimatePresence>
