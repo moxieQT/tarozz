@@ -327,6 +327,7 @@ export function ProfilePage() {
         x: 20 + (i / Math.max(completedCycles.length - 1, 1)) * 420,
         connections: [],
         intensity: cycle.avgIntensity,
+        createdAt: new Date(cycle.completedAt).getTime(),
       };
     });
   }, [completedCycles]);

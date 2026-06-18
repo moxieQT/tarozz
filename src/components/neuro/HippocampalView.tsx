@@ -11,6 +11,7 @@ export interface Neuron {
   x: number; // 0-400 position
   connections: string[];
   intensity?: number; // 0-100, used for neuron sizing and visualization
+  createdAt?: number; // timestamp for growth animation (0-1000ms growth)
 }
 
 interface HippocampalViewProps {
@@ -292,6 +293,10 @@ export function HippocampalView({
       neurons.forEach((un, idx) => {
         const maturity = computeNeuronMaturity(un.bornAt, un.maturityLevel);
 
+        // Calculate growth animation (0-1000ms from creation)
+        const createdAt = un.createdAt || Date.now();
+        const growthProgress = Math.min(1, (Date.now() - createdAt) / 1000);
+
         // Position neurons in a line/arc when background is hidden
         let pos: any;
         if (showBackgroundStructure && nodes.length > 0) {
@@ -321,7 +326,7 @@ export function HippocampalView({
         // Scale size based on intensity (0-100 maps to 0.8-1.2x)
         const intensityScale = 0.8 + (Math.min(un.intensity || 50, 100) / 100) * 0.4;
         const baseSize = [2.2, 3.0, 4.2, 5.2, 6.0][maturity];
-        const size = baseSize * intensityScale;
+        const size = baseSize * intensityScale * growthProgress;
         const color = [0xd946ef, 0x06b6d4, 0x10b981, 0x22c55e, 0xec4899][maturity];
 
         // Active highlighted halo
@@ -329,7 +334,7 @@ export function HippocampalView({
           map: glowTex,
           color: color,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.9 * growthProgress,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
           depthTest: true
@@ -337,17 +342,18 @@ export function HippocampalView({
         const halo = new THREE.Sprite(haloMat);
         halo.scale.set(size * 1.5, size * 1.5, 1);
         nodeGroup.add(halo);
-        pulsers.push({ obj: halo, base: size * 1.5, amp: size * 0.35, freq: 2.2, phase: idx });
+        pulsers.push({ obj: halo, base: size * 1.5, amp: size * 0.35 * growthProgress, freq: 2.2, phase: idx, growthProgress: { current: growthProgress } });
 
         // Glowing nucleus
-        const nuc = new THREE.Sprite(new THREE.SpriteMaterial({
+        const nucMat = new THREE.SpriteMaterial({
           map: glowTex,
           color: 0xffffff,
           transparent: true,
-          opacity: 0.95,
+          opacity: 0.95 * growthProgress,
           blending: THREE.AdditiveBlending,
           depthWrite: false
-        }));
+        });
+        const nuc = new THREE.Sprite(nucMat);
         nuc.position.set(rand(-0.4, 0.4), rand(-0.4, 0.4), 0.3);
         nuc.scale.set(size * 0.7, size * 0.7, 1);
         nodeGroup.add(nuc);
