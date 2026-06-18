@@ -1,5 +1,6 @@
 import React from 'react';
 import { Activity, Zap, Brain } from 'lucide-react';
+import { motion } from 'motion/react';
 
 export interface NeuronStatsData {
   total: number;
@@ -45,10 +46,12 @@ export function NeuronStats({ data }: NeuronStatsProps) {
               </span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--sunken)' }}>
-              <div
-                className="h-full transition-all duration-500"
+              <motion.div
+                className="h-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${activePercent}%` }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                 style={{
-                  width: `${activePercent}%`,
                   background: 'linear-gradient(90deg, #10b981, #22c55e)',
                 }}
               />
@@ -69,10 +72,12 @@ export function NeuronStats({ data }: NeuronStatsProps) {
               </span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--sunken)' }}>
-              <div
-                className="h-full transition-all duration-500"
+              <motion.div
+                className="h-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${integratedPercent}%` }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
                 style={{
-                  width: `${integratedPercent}%`,
                   background: 'linear-gradient(90deg, #06b6d4, #0891b2)',
                 }}
               />
@@ -94,10 +99,12 @@ export function NeuronStats({ data }: NeuronStatsProps) {
                 </span>
               </div>
               <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--sunken)' }}>
-                <div
-                  className="h-full transition-all duration-500"
+                <motion.div
+                  className="h-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${dormantPercent}%` }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
                   style={{
-                    width: `${dormantPercent}%`,
                     background: 'rgba(100,116,139,0.4)',
                   }}
                 />
