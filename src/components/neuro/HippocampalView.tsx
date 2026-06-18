@@ -599,12 +599,41 @@ export function HippocampalView({
         targetCameraZ = Math.min(130, Math.max(26, targetCameraZ));
       };
 
-      const handleResetKey = (e: KeyboardEvent) => {
+      let selectedNeuronIndex = -1;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
         if (e.code === 'KeyR' || e.code === 'KeyH') {
+          // Reset view
           targetCameraZ = 64;
           target.x = 0.05;
           target.y = 0;
           setHoverState(-1, null);
+          selectedNeuronIndex = -1;
+        } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown') {
+          // Navigate to next neuron
+          e.preventDefault();
+          selectedNeuronIndex = Math.min(selectedNeuronIndex + 1, neurons.length - 1);
+          if (selectedNeuronIndex >= 0 && selectedNeuronIndex < userNeuronTargets.length) {
+            const target = userNeuronTargets[selectedNeuronIndex];
+            setHoverState(-1, target);
+          }
+        } else if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') {
+          // Navigate to previous neuron
+          e.preventDefault();
+          selectedNeuronIndex = Math.max(selectedNeuronIndex - 1, 0);
+          if (selectedNeuronIndex >= 0 && selectedNeuronIndex < userNeuronTargets.length) {
+            const target = userNeuronTargets[selectedNeuronIndex];
+            setHoverState(-1, target);
+          }
+        } else if (e.code === 'Enter' && selectedNeuronIndex >= 0) {
+          // Select/click current neuron
+          if (selectedNeuronIndex < userNeuronTargets.length) {
+            const matchedTarget = userNeuronTargets[selectedNeuronIndex];
+            const { neuron, maturity } = matchedTarget.userData;
+            const enriched = { ...neuron, maturityLevel: maturity };
+            setSelected(prev => (prev?.id === enriched.id ? null : enriched));
+            onNeuronTap?.(enriched);
+          }
         }
       };
 
@@ -612,14 +641,14 @@ export function HippocampalView({
       container.addEventListener('pointermove', handlePointerMove);
       window.addEventListener('pointerup', handlePointerUp);
       container.addEventListener('wheel', handleWheel, { passive: false });
-      window.addEventListener('keydown', handleResetKey);
+      window.addEventListener('keydown', handleKeyDown);
 
       innerCleanup = () => {
         container.removeEventListener('pointerdown', handlePointerDown);
         container.removeEventListener('pointermove', handlePointerMove);
         window.removeEventListener('pointerup', handlePointerUp);
         container.removeEventListener('wheel', handleWheel);
-        window.removeEventListener('keydown', handleResetKey);
+        window.removeEventListener('keydown', handleKeyDown);
         
         graphGroup.traverse((obj: any) => {
           if (obj.geometry) {
@@ -869,13 +898,23 @@ export function HippocampalView({
         )}
 
         {/* Control hint overlay */}
-        <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 select-none">
-          <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
-            R — сброс камеры
-          </span>
-          <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
-            Drag — вращение
-          </span>
+        <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-10 select-none">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              R — сброс камеры
+            </span>
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              Drag — вращение
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              ← → — навигация
+            </span>
+            <span className="font-mono text-[8px] text-gray-400 bg-black/60 px-2.5 py-1 rounded-lg border border-white/10 uppercase tracking-widest leading-none">
+              Enter — выбрать
+            </span>
+          </div>
         </div>
       </div>
 
