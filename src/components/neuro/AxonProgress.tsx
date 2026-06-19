@@ -61,8 +61,8 @@ export function AxonProgress({
       const scene = new THREE.Scene();
 
       // 2. Camera setup
-      const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-      camera.position.set(0, 0, 16);
+      const camera = new THREE.PerspectiveCamera(52, width / height, 0.1, 100);
+      camera.position.set(0, 0, 9);
 
       // 3. Renderer with transparent background to overlay on Tailwind
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -219,32 +219,32 @@ export function AxonProgress({
         }
       }
 
-      const axonLength = 11;
+      const axonLength = 16;
       const ctrlPts = [
-        [-5.5, 0, 0],
-        [-3.3, 0.12, 0.08],
-        [-1.1, -0.06, -0.08],
-        [1.1, 0.08, 0.08],
-        [3.3, -0.04, -0.04],
-        [5.3, 0, 0]
+        [-8, 0, 0],
+        [-4.8, 0.18, 0.1],
+        [-1.6, -0.08, -0.1],
+        [1.6, 0.1, 0.1],
+        [4.8, -0.06, -0.06],
+        [8, 0, 0]
       ];
 
       const bundleInfo = buildBundle(ctrlPts, {
-        count: 10,
-        radius: 0.11,
-        coreR: 0.025,
-        turns: 1.5,
-        fan: 1.0,
+        count: 14,
+        radius: 0.14,
+        coreR: 0.033,
+        turns: 1.6,
+        fan: 1.2,
         color: 0x111111
       });
 
       // Build growth cone on the right tip of the bundle
-      buildGrowthCone(bundleInfo.endPt, bundleInfo.endTan, 0.24);
+      buildGrowthCone(bundleInfo.endPt, bundleInfo.endTan, 0.30);
 
       // 6. Myelin segments distribution
       const segmentCount = Math.max(1, totalSegments);
-      const startX = -axonLength / 2 + 1;
-      const endX = axonLength / 2 - 1;
+      const startX = -axonLength / 2 + 1.5;
+      const endX = axonLength / 2 - 1.5;
       const stepX = segmentCount > 1 ? (endX - startX) / (segmentCount - 1) : 0;
 
       const segmentsGroup = new THREE.Group();
@@ -259,50 +259,64 @@ export function AxonProgress({
         const isJustAdded = isCompleted && i >= completedSegments - justAddedSegments;
 
         if (isCompleted) {
-          // Glossy lipid capsule
-          const sheathLength = stepX * 0.76 || 1.1;
-          const sheathGeo = new THREE.CylinderGeometry(0.38, 0.38, sheathLength, 24);
-          
-          const matColor = isJustAdded ? 0x86efac : 0xdcfce7;
+          const r = 0.44;
+          const capsuleLen = stepX * 0.74 || 1.1;
+          const halfLen = capsuleLen / 2;
+
+          const matColor = isJustAdded ? 0x86efac : 0x1c4d30;
           const sheathMat = new THREE.MeshPhysicalMaterial({
             color: matColor,
-            metalness: 0.25,
-            roughness: 0.05,
-            transmission: 0.85,
-            ior: 1.52, // refractive index of glass/lipid
+            metalness: 0.18,
+            roughness: 0.04,
+            transmission: 0.86,
+            ior: 1.52,
             clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
-            emissive: isJustAdded ? 0x22c55e : 0x16a34a,
-            emissiveIntensity: isJustAdded ? 0.6 : 0.2,
+            clearcoatRoughness: 0.03,
+            emissive: isJustAdded ? 0x22c55e : 0x0e2e1c,
+            emissiveIntensity: isJustAdded ? 0.55 : 0.22,
           });
 
+          // Cylinder body
+          const sheathGeo = new THREE.CylinderGeometry(r, r, capsuleLen, 28);
           const sheath = new THREE.Mesh(sheathGeo, sheathMat);
           sheath.position.x = x;
           sheath.rotation.z = Math.PI / 2;
           segmentsGroup.add(sheath);
           segmentMeshes.push({ mesh: sheath, index: i, type: 'sheath' });
 
-          // Specular highlights via smaller torus wrapping
-          const wrapGeo = new THREE.TorusGeometry(0.40, 0.02, 8, 32);
+          // Rounded end caps (hemispheres) — capsule shape like DNA ref
+          const capL = new THREE.Mesh(
+            new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+            sheathMat
+          );
+          capL.position.set(x - halfLen, 0, 0);
+          capL.rotation.z = Math.PI / 2;
+          segmentsGroup.add(capL);
+
+          const capR = new THREE.Mesh(
+            new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+            sheathMat
+          );
+          capR.position.set(x + halfLen, 0, 0);
+          capR.rotation.z = -Math.PI / 2;
+          segmentsGroup.add(capR);
+
+          // Specular ring at center
+          const wrapGeo = new THREE.TorusGeometry(r + 0.01, 0.022, 8, 36);
           const wrapMat = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.22,
           });
-          const wrap1 = new THREE.Mesh(wrapGeo, wrapMat);
-          wrap1.position.set(x - sheathLength * 0.2, 0, 0);
-          wrap1.rotation.y = Math.PI / 2;
-          segmentsGroup.add(wrap1);
-
-          const wrap2 = new THREE.Mesh(wrapGeo, wrapMat);
-          wrap2.position.set(x + sheathLength * 0.2, 0, 0);
-          wrap2.rotation.y = Math.PI / 2;
-          segmentsGroup.add(wrap2);
+          const wrap = new THREE.Mesh(wrapGeo, wrapMat);
+          wrap.position.x = x;
+          wrap.rotation.y = Math.PI / 2;
+          segmentsGroup.add(wrap);
 
         } else {
           // Ghost unmyelinated outline
-          const ghostLength = stepX * 0.76 || 1.1;
-          const ghostGeo = new THREE.CylinderGeometry(0.34, 0.34, ghostLength, 12, 1, true);
+          const ghostLength = stepX * 0.74 || 1.1;
+          const ghostGeo = new THREE.CylinderGeometry(0.40, 0.40, ghostLength, 14, 1, true);
           const ghostMat = new THREE.MeshBasicMaterial({
             color: 0x86efac,
             wireframe: true,
@@ -323,12 +337,12 @@ export function AxonProgress({
           nodeXCoords.push(nodeX);
 
           // Render a tiny electrical node sphere
-          const nodeGeo = new THREE.SphereGeometry(0.18, 12, 12);
+          const nodeGeo = new THREE.SphereGeometry(0.20, 14, 14);
           const nodeMat = new THREE.MeshPhysicalMaterial({
-            color: 0x4ade80,
-            emissive: 0x22c55e,
-            emissiveIntensity: 0.4,
-            roughness: 0.1,
+            color: 0x3aaa62,
+            emissive: 0x1a5e30,
+            emissiveIntensity: 0.5,
+            roughness: 0.08,
           });
           const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
           nodeMesh.position.set(nodeX, 0, 0);
@@ -526,7 +540,7 @@ export function AxonProgress({
   return (
     <div
       ref={containerRef}
-      className="w-full h-[150px] relative rounded-2xl overflow-hidden transition-all duration-700"
+      className="w-full h-[220px] relative rounded-2xl overflow-hidden transition-all duration-700"
       style={{
         background: 'radial-gradient(120% 140% at 20% 0%, rgba(30,28,26,0.98) 0%, rgba(18,17,16,0.99) 55%, rgba(10,10,10,1) 100%)',
         boxShadow: '0 16px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,175,55,0.15), inset 0 0 60px rgba(0,0,0,0.5)'
