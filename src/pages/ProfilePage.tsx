@@ -12,7 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, Achievement } from '../data/achievements';
 import { TIER_CONFIG } from '../data/subscription';
 import { PHASES } from '../data/phases';
-import { HippocampalView, Neuron, NeuronStats, NeuronStatsData } from '../components/neuro';
+import { HippocampalView, Neuron } from '../components/neuro';
 
 const PHASE_NAMES: Record<number, string> = Object.fromEntries(
   PHASES.map(p => [p.id, p.subtitle])
@@ -232,10 +232,14 @@ export function ProfilePage() {
     openPaywall, setSubscription, updateProfileName,
   } = useAppStore();
 
+  
+  
   const [activeSection, setActiveSection] = useState<'stats' | 'achievements' | 'history' | 'settings' | 'neuro'>('neuro');
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(profile.name);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+
 
   const [neuronInsight, setNeuronInsight] = useState<string>('');
 
@@ -288,46 +292,32 @@ export function ProfilePage() {
 
   const handleNeuronTap = async (neuron: Neuron) => {
     setNeuronInsight('Загрузка инсайта…');
-    const days = Math.floor((Date.now() - new Date(neuron.bornAt).getTime()) / (1000 * 60 * 60 * 24));
-    try {
-      const response = await fetch('/api/neuro/neuron-insight', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: neuron.bornAt,
-          phaseName: PHASE_NAMES[neuron.phaseId] ?? `Фаза ${neuron.phaseId}`,
-          phaseDesc: PHASE_NAMES[neuron.phaseId] ?? `Рефлексия ${neuron.phaseId}`,
-          maturityLevel: neuron.maturityLevel,
-          days,
-        }),
-      });
-      const data = await response.json();
-      setNeuronInsight(data.result || 'Нейрон интегрирован в гранулярный слой зубчатой извилины.');
-    } catch {
+    setTimeout(() => {
       setNeuronInsight('Нейрон интегрирован в гранулярный слой зубчатой извилины.');
-    }
+    }, 500);
   };
 
-  // Generate exactly 1 neuron per completed cycle representing a clean developmental progression.
+  // Generate 1 neuron per completed cycle (regime) with proper connections
   const myNeurons: Neuron[] = useMemo(() => {
     return completedCycles.map((cycle, i) => {
-      // Create a clean progression: older completed cycles are older neurons, newer is younger.
-      // This spreads their developmental stages cleanly so they aren't all clustered too close in age.
+      // Older cycles = older neurons, newer = younger
       const actualAgeMs = Date.now() - new Date(cycle.completedAt).getTime();
       const minimumAgeMs = (completedCycles.length - 1 - i) * 7 * 24 * 60 * 60 * 1000; // 7 days per cycle
       const ageMs = Math.max(actualAgeMs, minimumAgeMs);
       const bornAtDate = new Date(Date.now() - ageMs);
 
+      // Each neuron connects to previous one, forming a chain
+      const previousNeuronId = i > 0 ? completedCycles[i - 1].id : null;
+      const connections = previousNeuronId ? [previousNeuronId] : [];
+
       return {
         id: cycle.id,
         bornAt: bornAtDate.toISOString(),
         phaseId: i % PHASES.length,
-        sessionContent: `Завершено: ${cycle.pathId === 'emergency' ? 'Экстренная помощь' : 'Терапевтический цикл'}`,
-        maturityLevel: 0, // dynamic maturity is derived from bornAt inside the HippocampalView component
+        sessionContent: `Режим: ${cycle.pathId === 'emergency' ? 'Экстренная помощь' : cycle.pathId === 'solo' ? 'Самостоятельный' : 'Терапевтический цикл'}`,
+        maturityLevel: 0,
         x: 20 + (i / Math.max(completedCycles.length - 1, 1)) * 420,
-        connections: [],
-        intensity: cycle.avgIntensity,
-        createdAt: new Date(cycle.completedAt).getTime(),
+        connections, // Соединение с предыдущим нейроном
       };
     });
   }, [completedCycles]);
@@ -537,28 +527,12 @@ export function ProfilePage() {
                   Новые нейроны рождаются во время каждой рефлексии
                 </p>
               )}
-
-              {/* Neurogenesis Statistics */}
-              {myNeurons.length > 0 && (() => {
-                const avgAge = myNeurons.length > 0
-                  ? myNeurons.reduce((sum, n) => {
-                      const ageMs = Date.now() - new Date(n.bornAt).getTime();
-                      return sum + Math.floor(ageMs / (1000 * 60 * 60 * 24));
-                    }, 0) / myNeurons.length
-                  : 0;
-
-                const statsData: NeuronStatsData = {
-                  total: myNeurons.length,
-                  active: myNeurons.length,
-                  integrated: Math.floor(myNeurons.length * 0.4),
-                  dormant: 0,
-                  avgAge: avgAge,
-                };
-
-                return <NeuronStats data={statsData} />;
-              })()}
             </motion.div>
           )}
+
+          
+
+          
 
           {/* ─── STATS SECTION ─── */}
           {activeSection === 'stats' && (

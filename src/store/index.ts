@@ -3,6 +3,16 @@ import { persist } from 'zustand/middleware';
 import { CardType, SavedCardType } from '../types';
 import { SubscriptionTier } from '../data/subscription';
 
+export interface PhaseRecord {
+  id: string;
+  pathId: string;
+  phaseIndex: number;
+  completedAt: string; // ISO date
+  answers: Record<string, string>;
+  cardCount: number;
+  avgIntensity: number;
+}
+
 export interface CycleRecord {
   id: string;
   pathId: string;
@@ -50,6 +60,7 @@ interface AppState {
   subscription: SubscriptionTier;
   profile: UserProfile;
   completedCycles: CycleRecord[];
+  completedPhases: PhaseRecord[]; // 1 neuron per phase
   streakData: StreakData;
   achievements: string[];
   journalEntries: JournalEntry[];
@@ -75,8 +86,9 @@ interface AppState {
   // === NEW: Profile actions ===
   updateProfileName: (name: string) => void;
 
-  // === NEW: Cycle history ===
+  // === NEW: Cycle & Phase history ===
   recordCycleCompletion: () => void;
+  recordPhaseCompletion: (phaseIndex: number) => void;
 
   // === NEW: Streak ===
   recordActivity: () => void;
@@ -175,6 +187,7 @@ export const useAppStore = create<AppState>()(
         avatarSeed: Math.floor(Math.random() * 10000),
       },
       completedCycles: [],
+      completedPhases: [],
       streakData: {
         currentStreak: 0,
         longestStreak: 0,
@@ -250,8 +263,51 @@ export const useAppStore = create<AppState>()(
         profile: { ...state.profile, name },
       })),
 
+      // === Phase history (1 neuron per phase) ===
+      recordPhaseCompletion: (phaseIndex: number) => set((state) => {
+        // Prevent recording duplicate phases in the same second
+        const now = new Date();
+        const recentPhase = state.completedPhases[state.completedPhases.length - 1];
+        if (recentPhase) {
+          const timeSinceLastPhase = now.getTime() - new Date(recentPhase.completedAt).getTime();
+          if (timeSinceLastPhase < 1000) {
+            return {};
+          }
+        }
+
+        const phase: PhaseRecord = {
+          id: generateId(),
+          pathId: state.activePathId || 'unknown',
+          phaseIndex,
+          completedAt: new Date().toISOString(),
+          answers: state.answers[phaseIndex] || {},
+          cardCount: state.savedCards.length,
+          avgIntensity:
+            state.savedCards.length > 0
+              ? Math.round(
+                  state.savedCards.reduce((s, c) => s + c.intensity, 0) /
+                    state.savedCards.length
+                )
+              : 0,
+        };
+        return {
+          completedPhases: [...state.completedPhases, phase],
+        };
+      }),
+
       // === Cycle history ===
       recordCycleCompletion: () => set((state) => {
+        // Prevent recording duplicate cycles in the same second
+        const now = new Date();
+        const recentCycle = state.completedCycles[state.completedCycles.length - 1];
+        if (recentCycle) {
+          const timeSinceLastCycle = now.getTime() - new Date(recentCycle.completedAt).getTime();
+          if (timeSinceLastCycle < 1000) {
+            // Less than 1 second since last cycle — skip duplicate
+            return {};
+          }
+        }
+
         const cycle: CycleRecord = {
           id: generateId(),
           pathId: state.activePathId || 'unknown',

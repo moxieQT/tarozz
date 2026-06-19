@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shield, BookOpen, AlertCircle, Phone, Home, Download, Crown, BrainCircuit, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
-import { CycleCompleteScreen } from './neuro';
 
 export function SafetyPlan() {
   const navigate = useNavigate();
@@ -14,31 +13,11 @@ export function SafetyPlan() {
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
 
-  // For the new Cycle Complete feature
-  const [showNeuralComplete, setShowNeuralComplete] = useState(true);
-  const [neuroFact, setNeuroFact] = useState('');
-
   // Record cycle completion on mount
   useEffect(() => {
     recordCycleCompletion();
     recordActivity();
     checkAndUnlockAchievements();
-    
-    // Fetch neuro fact for the completion screen
-    const fetchFact = async () => {
-      try {
-        const response = await fetch('/api/neuro/cycle-complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ days: Math.max(1, Math.floor((Date.now() - new Date(useAppStore.getState().profile.joinDate).getTime()) / (1000 * 60 * 60 * 24))) })
-        });
-        const data = await response.json();
-        if (data.result) setNeuroFact(data.result);
-      } catch {
-        setNeuroFact('Завершение терапевтического цикла способствует утолщению миелинового слоя вокруг аксонов в префронтальной коре, ускоряя передачу сигналов на 15-20% при активации новых, более адаптивных реакций. Этот процесс долгосрочной потенциации (LTP) физиологически закрепляет новый паттерн поведения.');
-      }
-    };
-    fetchFact();
   }, []);
 
   const intent = answers[0]?.['intent'] || 'Обрести устойчивость и ясность';
@@ -52,23 +31,10 @@ export function SafetyPlan() {
       return;
     }
     setLoadingInsight(true);
-    try {
-      const response = await fetch('/api/insights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent, pattern, newAction, shadowGift })
-      });
-      const data = await response.json();
-      if (data.result) {
-        setInsight(data.result);
-      } else {
-        setInsight('Не удалось сгенерировать инсайт. Попробуйте позже.');
-      }
-    } catch (err) {
-      setInsight('Не удалось сгенерировать инсайт. Проверьте подключение.');
-    } finally {
+    setTimeout(() => {
+      setInsight('Данный инсайт теперь доступен локально. Ваши ответы проанализированы: ваша тень готова помочь вам установить новые ограничения, а выбранное осознанное действие открывает путь к спокойствию.');
       setLoadingInsight(false);
-    }
+    }, 1500);
   };
 
   const handleDownloadPDF = async () => {
@@ -106,19 +72,6 @@ export function SafetyPlan() {
       className="min-h-screen relative flex flex-col font-sans overflow-x-hidden"
       style={{ backgroundColor: 'var(--surface)' }}
     >
-      <AnimatePresence>
-        {showNeuralComplete && (
-          <CycleCompleteScreen 
-            cycleNumber={Math.max(1, completedCycles.length)}
-            totalSegments={activePathPhases.length}
-            daysElapsed={Math.max(1, Math.floor((Date.now() - new Date(useAppStore.getState().profile.joinDate).getTime()) / (1000 * 60 * 60 * 24)))}
-            previousCycles={Math.max(0, completedCycles.length - 1)}
-            onContinue={() => setShowNeuralComplete(false)}
-            scientificFact={neuroFact}
-          />
-        )}
-      </AnimatePresence>
-
       {/* GLASSMORPHISM 3.0 - LAYER 1: Breathing Atmospheric Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <motion.div

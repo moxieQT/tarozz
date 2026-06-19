@@ -283,13 +283,13 @@ export function HippocampalView({
       graphGroup.add(userNeuronsGroup);
 
       const pulsers: any[] = [];
-      const userNeuronPositions: any[] = [];
+      const userNeuronPositions: THREE.Vector3[] = [];
 
       neurons.forEach((un, idx) => {
         const maturity = computeNeuronMaturity(un.bornAt, un.maturityLevel);
 
         // Position neurons in a line/arc when background is hidden
-        let pos: any;
+        let pos: THREE.Vector3;
         if (showBackgroundStructure && nodes.length > 0) {
           const baseNode = nodes[idx % nodes.length];
           pos = baseNode.pos.clone().add(new THREE.Vector3(

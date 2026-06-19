@@ -74,14 +74,14 @@ export function AxonProgress({
       container.appendChild(renderer.domElement);
 
       // 4. Lights
-      const ambientLight = new THREE.AmbientLight(0xdcfce7, 0.3); // light green ambient
+      const ambientLight = new THREE.AmbientLight(0x2a2826, 0.8);
       scene.add(ambientLight);
 
-      const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.85);
+      const dirLight1 = new THREE.DirectionalLight(0xfff0dd, 0.85);
       dirLight1.position.set(2, 5, 10);
       scene.add(dirLight1);
 
-      const pulseLight = new THREE.PointLight(0x63e0a0, 1.8, 12);
+      const pulseLight = new THREE.PointLight(0xffb84d, 1.8, 12);
       pulseLight.position.set(0, 0, 1);
       scene.add(pulseLight);
 
@@ -176,11 +176,11 @@ export function AxonProgress({
         const side = new THREE.Vector3().crossVectors(D, up).normalize();
         const side2 = new THREE.Vector3().crossVectors(D, side).normalize();
 
-        const lam = addHalo(center, 9 * scale, 0x2bff5e, 0.45);
+        const lam = addHalo(center, 9 * scale, 0xd4af37, 0.45);
         pulsers.push({ obj: lam, base: 9 * scale, amp: 1.0 * scale, freq: 1.3, phase: Math.random() * 6 });
-        addHalo(center.clone().addScaledVector(D, 1.2 * scale), 6 * scale, 0x9dff5a, 0.3);
+        addHalo(center.clone().addScaledVector(D, 1.2 * scale), 6 * scale, 0xffd700, 0.3);
 
-        addHalo(center.clone().addScaledVector(D, -1.5 * scale), 5 * scale, 0xffd23b, 0.4);
+        addHalo(center.clone().addScaledVector(D, -1.5 * scale), 5 * scale, 0x8b6508, 0.4);
 
         const fmat = (color: number, opacity: number) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
 
@@ -208,7 +208,7 @@ export function AxonProgress({
           }
           const fc = new THREE.CatmullRomCurve3(fp);
           const r = (0.04 + Math.random() * 0.04) * scale;
-          const col = i % 5 === 0 ? 0xeaff6a : 0x36ff6b;
+          const col = i % 5 === 0 ? 0xddaa44 : 0x886622;
           const core = new THREE.Mesh(new THREE.TubeGeometry(fc, 16, r, 5, false), fmat(col, 0.9));
           const halo = new THREE.Mesh(new THREE.TubeGeometry(fc, 12, r * 3.2, 5, false), fmat(col, 0.12));
           axonGroup.add(core);
@@ -235,7 +235,7 @@ export function AxonProgress({
         coreR: 0.025,
         turns: 1.5,
         fan: 1.0,
-        color: 0xff3b3b
+        color: 0x111111
       });
 
       // Build growth cone on the right tip of the bundle
@@ -350,7 +350,7 @@ export function AxonProgress({
       // Halo spark for jump
       const haloGeo = new THREE.SphereGeometry(0.65, 16, 16);
       const haloMat = new THREE.MeshBasicMaterial({
-        color: 0x4ade80,
+        color: 0xffb84d,
         transparent: true,
         opacity: 0.45,
       });
@@ -361,7 +361,7 @@ export function AxonProgress({
       const ionsGroup = new THREE.Group();
       scene.add(ionsGroup);
       const ions: any[] = [];
-      const ionColors = [0x86efac, 0x34d399, 0xa7f3d0];
+      const ionColors = [0xd4af37, 0xdaa520, 0xb8860b];
 
       for (let k = 0; k < 12; k++) {
         const ionColor = ionColors[k % ionColors.length];
@@ -528,8 +528,8 @@ export function AxonProgress({
       ref={containerRef}
       className="w-full h-[150px] relative rounded-2xl overflow-hidden transition-all duration-700"
       style={{
-        background: 'radial-gradient(120% 140% at 20% 0%, rgba(38,58,46,0.98) 0%, rgba(18,32,25,0.99) 55%, rgba(12,24,19,1) 100%)',
-        boxShadow: '0 16px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(160,230,190,0.10), inset 0 0 60px rgba(0,0,0,0.4)'
+        background: 'radial-gradient(120% 140% at 20% 0%, rgba(30,28,26,0.98) 0%, rgba(18,17,16,0.99) 55%, rgba(10,10,10,1) 100%)',
+        boxShadow: '0 16px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,175,55,0.15), inset 0 0 60px rgba(0,0,0,0.5)'
       }}
     >
       {/* 2D Fallback shown ONLY during loading of THREE.js */}
@@ -565,8 +565,8 @@ export function AxonProgress({
                 return (
                   <g key={i}>
                     <ellipse cx={cx} cy="75.5" rx={rx} ry={ry} fill="rgba(0,0,0,0.28)" />
-                    <ellipse cx={cx} cy="74" rx={rx} ry={ry} fill="rgba(194,230,211,0.7)" />
-                    <ellipse cx={cx} cy="74" rx={rx} ry={ry} fill="none" stroke="rgba(70,110,90,0.5)" strokeWidth="0.6" />
+                    <ellipse cx={cx} cy="74" rx={rx} ry={ry} fill="rgba(212,175,55,0.3)" />
+                    <ellipse cx={cx} cy="74" rx={rx} ry={ry} fill="none" stroke="rgba(212,175,55,0.15)" strokeWidth="0.6" />
                   </g>
                 );
               })}
@@ -581,19 +581,19 @@ export function AxonProgress({
           <div
             className="w-1.5 h-1.5 rounded-full"
             style={{
-              background: '#63E0A0',
-              boxShadow: '0 0 8px rgba(99,224,160,0.9)',
+              background: '#d4af37',
+              boxShadow: '0 0 8px rgba(212,175,55,0.8)',
             }}
           />
-          <span className="font-mono text-[9px] uppercase tracking-[0.22em]" style={{ color: 'rgba(150,220,185,0.85)' }}>
+          <span className="font-mono text-[9px] uppercase tracking-[0.22em]" style={{ color: 'rgba(212,175,55,0.7)' }}>
             Аксон · Миелинизация 3D
           </span>
         </div>
         <div className="flex items-end justify-between">
-          <span className="font-mono text-[10px]" style={{ color: 'rgba(150,220,185,0.7)' }}>
+          <span className="font-mono text-[10px]" style={{ color: 'rgba(212,175,55,0.7)' }}>
             {completedSegments} / {totalSegments} сегментов
           </span>
-          <span className="font-mono text-[10px] tracking-wider" style={{ color: 'rgba(150,220,185,0.55)' }}>
+          <span className="font-mono text-[10px] tracking-wider" style={{ color: 'rgba(212,175,55,0.55)' }}>
             ЦИКЛ {cycleNumber}
           </span>
         </div>

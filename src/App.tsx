@@ -32,7 +32,7 @@ export function CartographyAppContent() {
   const { activeTab, savedCards, currentPhaseIndex, activePathPhases, completePhase } = useAppStore();
   const navigate = useNavigate();
   const hasCards = savedCards.length > 0;
-  
+
   const currentPhaseId = activePathPhases[currentPhaseIndex] || 0;
 
   const handleComplete = () => {

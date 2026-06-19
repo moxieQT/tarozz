@@ -59,20 +59,9 @@ export const FeedPage: React.FC = () => {
       setInsightText("Миелинизация формируется...");
       
       // Fetch insight text
-      try {
-        const response = await fetch('/api/neuro/myelin-insight', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ intensity })
-        });
-        const data = await response.json();
-        if (data.result) {
-          setInsightText(data.result);
-        }
-      } catch (err) {
-        // Fallback or leave as loading
+      setTimeout(() => {
         setInsightText(intensity < 40 ? "Рутинная перестройка нейронных путей." : intensity < 70 ? "Миелинизация активирована. Скорость проведения увеличивается." : "Зафиксирована долгосрочная потенциация.");
-      }
+      }, 500);
     }
   };
 
