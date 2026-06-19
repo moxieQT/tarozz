@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { makeFrostedMaps, makeEnvTexture, readDarkTheme } from './glassMaterial';
 
 export interface AxonProgressProps {
   totalSegments: number;
@@ -9,591 +11,445 @@ export interface AxonProgressProps {
   onCycleComplete?: () => void;
 }
 
-// Simple loader query for Three.js CDN
-const loadThree = (): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    if ((window as any).THREE) {
-      resolve((window as any).THREE);
-      return;
-    }
-    const existingScript = document.getElementById('three-js-cdn');
-    if (existingScript) {
-      const handleLoad = () => resolve((window as any).THREE);
-      existingScript.addEventListener('load', handleLoad);
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = 'three-js-cdn';
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-    script.async = true;
-    script.onload = () => resolve((window as any).THREE);
-    script.onerror = (e) => reject(e);
-    document.head.appendChild(script);
-  });
-};
-
 export function AxonProgress({
   totalSegments,
   completedSegments,
   justAddedSegments,
   cycleNumber,
-  intensity,
+  intensity: _intensity,
 }: AxonProgressProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [threeLoaded, setThreeLoaded] = useState(false);
+  const [threeReady, setThreeReady] = useState(false);
+  const [isDark, setIsDark] = useState(readDarkTheme);
+
+  // Re-theme the scene whenever the app toggles light/dark.
+  useEffect(() => {
+    const obs = new MutationObserver(() => setIsDark(readDarkTheme()));
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     let active = true;
-    let animationFrameId: number;
-    let renderer: any = null;
+    let frameId = 0;
+    let renderer: THREE.WebGLRenderer | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    const container = containerRef.current;
+    if (!container) return;
 
-    loadThree().then((THREE) => {
-      if (!active || !containerRef.current) return;
-      setThreeLoaded(true);
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      const container = containerRef.current;
-      const rect = container.getBoundingClientRect();
-      const width = rect.width || 360;
-      const height = rect.height || 150;
+    const rect = container.getBoundingClientRect();
+    let width = rect.width || 360;
+    let height = rect.height || 220;
 
-      // 1. Scene setup
-      const scene = new THREE.Scene();
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
+    camera.position.set(0, 0.2, 8.5);
 
-      // 2. Camera setup
-      const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-      camera.position.set(0, 0, 16);
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    container.querySelectorAll('canvas').forEach((c) => c.remove());
+    container.appendChild(renderer.domElement);
+    setThreeReady(true);
 
-      // 3. Renderer with transparent background to overlay on Tailwind
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(width, height);
-      
-      // Clean previous canvases
-      container.querySelectorAll('canvas').forEach(c => c.remove());
-      container.appendChild(renderer.domElement);
+    // ── Theme-dependent lighting / environment ──
+    const envTex = makeEnvTexture(isDark);
+    scene.environment = envTex;
 
-      // 4. Lights
-      const ambientLight = new THREE.AmbientLight(0x2a2826, 0.8);
-      scene.add(ambientLight);
+    const ambient = new THREE.AmbientLight(0xffffff, isDark ? 0.35 : 0.7);
+    scene.add(ambient);
+    const keyLight = new THREE.DirectionalLight(0xffffff, isDark ? 1.1 : 1.4);
+    keyLight.position.set(-4, 6, 8);
+    scene.add(keyLight);
+    const rimLight = new THREE.DirectionalLight(
+      isDark ? 0x6fd49a : 0xbfe3cd,
+      isDark ? 0.8 : 0.5,
+    );
+    rimLight.position.set(5, -3, 4);
+    scene.add(rimLight);
 
-      const dirLight1 = new THREE.DirectionalLight(0xfff0dd, 0.85);
-      dirLight1.position.set(2, 5, 10);
-      scene.add(dirLight1);
+    // Travelling action-potential glow lives *inside* the glass — a point light.
+    const impulseLight = new THREE.PointLight(0x9bf6c4, 0, 6, 2);
+    scene.add(impulseLight);
 
-      const pulseLight = new THREE.PointLight(0xffb84d, 1.8, 12);
-      pulseLight.position.set(0, 0, 1);
-      scene.add(pulseLight);
+    const { normalMap, roughnessMap } = makeFrostedMaps(256);
 
-      // 5. Axon Core Group with Fiber Bundles & Growth Cone
-      const axonGroup = new THREE.Group();
-      scene.add(axonGroup);
+    const axonGroup = new THREE.Group();
+    scene.add(axonGroup);
 
-      // ---- glow sprite texture ----
-      const glowTex = (() => {
-        const c = document.createElement('canvas'); c.width = c.height = 128;
-        const g = c.getContext('2d')!;
-        const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-        grad.addColorStop(0, 'rgba(255,255,255,1)');
-        grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
-        grad.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
-        return new THREE.CanvasTexture(c);
-      })();
+    const beadCount = Math.max(1, totalSegments);
+    const completed = Math.max(0, Math.min(beadCount, completedSegments));
+    const justAdded = Math.max(0, justAddedSegments);
 
-      const addHalo = (pos: any, size: number, color: number, opacity: number) => {
-        const m = new THREE.SpriteMaterial({
-          map: glowTex,
-          color,
-          transparent: true,
-          opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          depthTest: false
-        });
-        const s = new THREE.Sprite(m);
-        s.position.copy(pos);
-        s.scale.set(size, size, 1);
-        axonGroup.add(s);
-        return s;
-      };
+    const spanLen = 9.2; // fixed total length of the axon
+    const startX = -spanLen / 2;
+    const stepX = beadCount > 1 ? spanLen / (beadCount - 1) : 0;
+    
+    // Calculate bead dimensions dynamically to prevent overlap on high segment counts
+    let beadR = 0.52;
+    let beadLen = beadCount > 1 ? stepX * 0.5 : 2.0;
+    
+    const maxCapsuleLen = beadCount > 1 ? stepX * 0.82 : 3.0; // leave ~18% gap
+    const actualCapsuleLen = beadLen + 2 * beadR;
+    const scale = actualCapsuleLen > maxCapsuleLen ? maxCapsuleLen / actualCapsuleLen : 1;
+    
+    beadR *= scale;
+    beadLen *= scale;
 
-      const pulsers: any[] = []; // {obj, base, amp, freq, phase}
+    // Rest spine — displaced each frame for the slow writhe.
+    const spineRest: THREE.Vector3[] = [];
+    const spineCtrlCount = 7;
+    for (let i = 0; i < spineCtrlCount; i++) {
+      const tt = i / (spineCtrlCount - 1);
+      spineRest.push(new THREE.Vector3(startX + tt * spanLen, 0, 0));
+    }
 
-      const tubeMat = (color: number, opacity: number) => new THREE.MeshBasicMaterial({
-        color,
+    const makeGlassMat = (justMatured: boolean) =>
+      new THREE.MeshPhysicalMaterial({
+        color: justMatured ? (isDark ? 0xbdf5d2 : 0xe9f7ee) : 0xffffff,
+        metalness: 0,
+        roughness: 0.35,
+        roughnessMap,
+        normalMap,
+        normalScale: new THREE.Vector2(1.2, 1.2),
+        transmission: 1.0,
+        thickness: 1.4,
+        ior: 1.45,
+        attenuationColor: new THREE.Color(isDark ? 0x4f9e74 : 0x9fc7ad),
+        attenuationDistance: 3.2,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.18,
+        envMap: envTex,
+        envMapIntensity: isDark ? 0.9 : 1.2,
         transparent: true,
-        opacity,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: false
+        emissive: new THREE.Color(0x6fd49a),
+        emissiveIntensity: 0,
       });
 
-      function buildBundle(ctrlPts: number[][], opts: { count: number; radius: number; coreR: number; turns: number; fan: number; color: number }) {
-        const base = new THREE.CatmullRomCurve3(ctrlPts.map(p => new THREE.Vector3(p[0], p[1], p[2])));
-        const N = 120;
-        const pts: any[] = [];
-        const tans: any[] = [];
-        for (let i = 0; i <= N; i++) {
-          const t = i / N;
-          pts.push(base.getPoint(t));
-          tans.push(base.getTangent(t));
-        }
-        const group = new THREE.Group();
+    interface Bead {
+      group: THREE.Group;
+      mat: THREE.MeshPhysicalMaterial;
+      tAlong: number;
+      index: number;
+      justMatured: boolean;
+    }
+    const beads: Bead[] = [];
 
-        for (let f = 0; f < opts.count; f++) {
-          const phase = (f / opts.count) * Math.PI * 2;
-          const turns = opts.turns;
-          const fr = opts.radius * (0.55 + Math.random() * 0.9);
-          const fiberPts: any[] = [];
-          for (let i = 0; i <= N; i++) {
-            const t = i / N;
-            const P = pts[i];
-            const T = tans[i];
-            const perpA = new THREE.Vector3(-T.y, T.x, 0).normalize();
-            const perpB = new THREE.Vector3().crossVectors(T, perpA).normalize();
-            const ang = t * turns * Math.PI * 2 + phase;
-            const spread = fr * (1 + Math.pow(t, 3) * opts.fan);
-            const wobble = Math.sin(t * 9 + f) * 0.05;
-            fiberPts.push(P.clone()
-              .addScaledVector(perpA, Math.cos(ang) * spread + wobble)
-              .addScaledVector(perpB, Math.sin(ang) * spread));
-          }
-          const curve = new THREE.CatmullRomCurve3(fiberPts);
-          const coreR = opts.coreR * (0.6 + Math.random() * 0.7);
-          const core = new THREE.Mesh(new THREE.TubeGeometry(curve, 100, coreR, 6, false), tubeMat(opts.color, 0.9));
-          const halo = new THREE.Mesh(new THREE.TubeGeometry(curve, 60, coreR * 3.4, 6, false), tubeMat(opts.color, 0.12));
-          group.add(core);
-          group.add(halo);
-        }
-        axonGroup.add(group);
-        return { base, endPt: pts[N], endTan: tans[N] };
-      }
+    // Capsule = cylinder + two hemisphere caps (geometry safe on r128 & r184).
+    function buildBead(index: number, justMatured: boolean): Bead {
+      const mat = makeGlassMat(justMatured);
+      const group = new THREE.Group();
 
-      function buildGrowthCone(center: any, dir: any, scale: number) {
-        const D = dir.clone().normalize();
-        const up = new THREE.Vector3(0, 0, 1);
-        const side = new THREE.Vector3().crossVectors(D, up).normalize();
-        const side2 = new THREE.Vector3().crossVectors(D, side).normalize();
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(beadR, beadR, beadLen, 40, 1),
+        mat,
+      );
+      body.rotation.z = Math.PI / 2; // cylinder runs along local +X
+      group.add(body);
 
-        const lam = addHalo(center, 9 * scale, 0xd4af37, 0.45);
-        pulsers.push({ obj: lam, base: 9 * scale, amp: 1.0 * scale, freq: 1.3, phase: Math.random() * 6 });
-        addHalo(center.clone().addScaledVector(D, 1.2 * scale), 6 * scale, 0xffd700, 0.3);
+      const capGeo = new THREE.SphereGeometry(
+        beadR,
+        32,
+        20,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2,
+      );
+      const capL = new THREE.Mesh(capGeo, mat);
+      capL.position.x = -beadLen / 2;
+      capL.rotation.z = Math.PI / 2;
+      group.add(capL);
+      const capR = new THREE.Mesh(capGeo, mat);
+      capR.position.x = beadLen / 2;
+      capR.rotation.z = -Math.PI / 2;
+      group.add(capR);
 
-        addHalo(center.clone().addScaledVector(D, -1.5 * scale), 5 * scale, 0x8b6508, 0.4);
+      const tAlong = beadCount > 1 ? index / (beadCount - 1) : 0.5;
+      axonGroup.add(group);
+      return { group, mat, tAlong, index, justMatured };
+    }
 
-        const fmat = (color: number, opacity: number) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
-
-        const nFil = 25;
-        for (let i = 0; i < nFil; i++) {
-          const a = (Math.random() - 0.5) * 2.2;
-          const b = (Math.random() - 0.5) * 1.5;
-          const len = (2.0 + Math.random() * 4.5) * scale;
-          const dirF = D.clone()
-            .addScaledVector(side, Math.sin(a) * 1.1)
-            .addScaledVector(side2, Math.sin(b) * 0.9)
-            .normalize();
-          const baseOff = center.clone()
-            .addScaledVector(side, (Math.random() - 0.5) * 3 * scale)
-            .addScaledVector(side2, (Math.random() - 0.5) * 2.5 * scale)
-            .addScaledVector(D, (Math.random() * 1.0) * scale);
-          const segs = 4;
-          const fp: any[] = [];
-          for (let s = 0; s <= segs; s++) {
-            const tt = s / segs;
-            fp.push(baseOff.clone()
-              .addScaledVector(dirF, len * tt)
-              .addScaledVector(side, Math.sin(tt * 4 + i) * 0.2 * scale)
-              .addScaledVector(side2, Math.cos(tt * 3 + i) * 0.15 * scale));
-          }
-          const fc = new THREE.CatmullRomCurve3(fp);
-          const r = (0.04 + Math.random() * 0.04) * scale;
-          const col = i % 5 === 0 ? 0xddaa44 : 0x886622;
-          const core = new THREE.Mesh(new THREE.TubeGeometry(fc, 16, r, 5, false), fmat(col, 0.9));
-          const halo = new THREE.Mesh(new THREE.TubeGeometry(fc, 12, r * 3.2, 5, false), fmat(col, 0.12));
-          axonGroup.add(core);
-          axonGroup.add(halo);
-
-          const tip = addHalo(fp[segs], (0.6 + Math.random() * 0.8) * scale, col, 0.45);
-          pulsers.push({ obj: tip, base: tip.scale.x, amp: 0.4 * scale, freq: 1.5 + Math.random(), phase: Math.random() * 6 });
-        }
-      }
-
-      const axonLength = 11;
-      const ctrlPts = [
-        [-5.5, 0, 0],
-        [-3.3, 0.12, 0.08],
-        [-1.1, -0.06, -0.08],
-        [1.1, 0.08, 0.08],
-        [3.3, -0.04, -0.04],
-        [5.3, 0, 0]
-      ];
-
-      const bundleInfo = buildBundle(ctrlPts, {
-        count: 10,
-        radius: 0.11,
-        coreR: 0.025,
-        turns: 1.5,
-        fan: 1.0,
-        color: 0x111111
-      });
-
-      // Build growth cone on the right tip of the bundle
-      buildGrowthCone(bundleInfo.endPt, bundleInfo.endTan, 0.24);
-
-      // 6. Myelin segments distribution
-      const segmentCount = Math.max(1, totalSegments);
-      const startX = -axonLength / 2 + 1;
-      const endX = axonLength / 2 - 1;
-      const stepX = segmentCount > 1 ? (endX - startX) / (segmentCount - 1) : 0;
-
-      const segmentsGroup = new THREE.Group();
-      axonGroup.add(segmentsGroup);
-
-      const segmentMeshes: any[] = [];
-      const nodeXCoords: number[] = [];
-
-      for (let i = 0; i < segmentCount; i++) {
-        const x = startX + i * stepX;
-        const isCompleted = i < completedSegments;
-        const isJustAdded = isCompleted && i >= completedSegments - justAddedSegments;
-
-        if (isCompleted) {
-          // Glossy lipid capsule
-          const sheathLength = stepX * 0.76 || 1.1;
-          const sheathGeo = new THREE.CylinderGeometry(0.38, 0.38, sheathLength, 24);
-          
-          const matColor = isJustAdded ? 0x86efac : 0xdcfce7;
-          const sheathMat = new THREE.MeshPhysicalMaterial({
-            color: matColor,
-            metalness: 0.25,
-            roughness: 0.05,
-            transmission: 0.85,
-            ior: 1.52, // refractive index of glass/lipid
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
-            emissive: isJustAdded ? 0x22c55e : 0x16a34a,
-            emissiveIntensity: isJustAdded ? 0.6 : 0.2,
-          });
-
-          const sheath = new THREE.Mesh(sheathGeo, sheathMat);
-          sheath.position.x = x;
-          sheath.rotation.z = Math.PI / 2;
-          segmentsGroup.add(sheath);
-          segmentMeshes.push({ mesh: sheath, index: i, type: 'sheath' });
-
-          // Specular highlights via smaller torus wrapping
-          const wrapGeo = new THREE.TorusGeometry(0.40, 0.02, 8, 32);
-          const wrapMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.3,
-          });
-          const wrap1 = new THREE.Mesh(wrapGeo, wrapMat);
-          wrap1.position.set(x - sheathLength * 0.2, 0, 0);
-          wrap1.rotation.y = Math.PI / 2;
-          segmentsGroup.add(wrap1);
-
-          const wrap2 = new THREE.Mesh(wrapGeo, wrapMat);
-          wrap2.position.set(x + sheathLength * 0.2, 0, 0);
-          wrap2.rotation.y = Math.PI / 2;
-          segmentsGroup.add(wrap2);
-
-        } else {
-          // Ghost unmyelinated outline
-          const ghostLength = stepX * 0.76 || 1.1;
-          const ghostGeo = new THREE.CylinderGeometry(0.34, 0.34, ghostLength, 12, 1, true);
-          const ghostMat = new THREE.MeshBasicMaterial({
-            color: 0x86efac,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.16,
-          });
-          const ghost = new THREE.Mesh(ghostGeo, ghostMat);
-          ghost.position.x = x;
-          ghost.rotation.z = Math.PI / 2;
-          segmentsGroup.add(ghost);
-          segmentMeshes.push({ mesh: ghost, index: i, type: 'ghost' });
-        }
-
-        // Midpoints between segments are Ranvier Nodes
-        if (i < segmentCount - 1) {
-          const nextX = startX + (i + 1) * stepX;
-          const nodeX = (x + nextX) / 2;
-          nodeXCoords.push(nodeX);
-
-          // Render a tiny electrical node sphere
-          const nodeGeo = new THREE.SphereGeometry(0.18, 12, 12);
-          const nodeMat = new THREE.MeshPhysicalMaterial({
-            color: 0x4ade80,
-            emissive: 0x22c55e,
-            emissiveIntensity: 0.4,
-            roughness: 0.1,
-          });
-          const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
-          nodeMesh.position.set(nodeX, 0, 0);
-          segmentsGroup.add(nodeMesh);
-        }
-      }
-
-      // Add start and end margin points to saltatory sequence
-      const allJumpPoints = [startX - 0.5, ...nodeXCoords, endX + 0.5];
-
-      // 7. Jumping electrical impulse (Action Potential)
-      const impulseGeo = new THREE.SphereGeometry(0.32, 16, 16);
-      const impulseMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-      });
-      const impulse = new THREE.Mesh(impulseGeo, impulseMat);
-      scene.add(impulse);
-
-      // Halo spark for jump
-      const haloGeo = new THREE.SphereGeometry(0.65, 16, 16);
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: 0xffb84d,
-        transparent: true,
-        opacity: 0.45,
-      });
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      scene.add(halo);
-
-      // 8. Drifting Ions around the active Ranvier nodes
-      const ionsGroup = new THREE.Group();
-      scene.add(ionsGroup);
-      const ions: any[] = [];
-      const ionColors = [0xd4af37, 0xdaa520, 0xb8860b];
-
-      for (let k = 0; k < 12; k++) {
-        const ionColor = ionColors[k % ionColors.length];
-        const ionGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 8, 8);
-        const ionMat = new THREE.MeshBasicMaterial({ color: ionColor, transparent: true, opacity: 0.8 });
-        const ion = new THREE.Mesh(ionGeo, ionMat);
-        
-        // Random placement near axon Nodes
-        const spotX = startX + Math.random() * (endX - startX);
-        const radius = 0.6 + Math.random() * 1.2;
-        const angle = Math.random() * Math.PI * 2;
-        ion.position.set(spotX, Math.cos(angle) * radius, Math.sin(angle) * radius);
-        
-        ionsGroup.add(ion);
-        ions.push({
-          mesh: ion,
-          speed: 1.0 + Math.random() * 2,
-          radius,
-          angle,
-          ox: spotX,
-        });
-      }
-
-      // 9. Interactive mouse movement following
-      let targetRotY = 0;
-      let targetRotX = 0;
-      let currentMouseX = 0;
-      let currentMouseY = 0;
-
-      const handlePointerMove = (e: PointerEvent) => {
-        const bounding = container.getBoundingClientRect();
-        currentMouseX = ((e.clientX - bounding.left) / bounding.width) * 2 - 1;
-        currentMouseY = -((e.clientY - bounding.top) / bounding.height) * 2 + 1;
-        targetRotY = currentMouseX * 0.4;
-        targetRotX = -currentMouseY * 0.25;
-      };
-
-      container.addEventListener('pointermove', handlePointerMove);
-
-      // 10. Animation loop
-      let time = 0;
-      const tick = () => {
-        if (!active) return;
-        time += 0.012;
-
-        // Smoothly lerp towards mouse pointer rotations
-        axonGroup.rotation.y += (targetRotY - axonGroup.rotation.y) * 0.08;
-        axonGroup.rotation.x += (targetRotX - axonGroup.rotation.x) * 0.08;
-
-        // Add ambient breathe oscillation
-        axonGroup.rotation.z = Math.sin(time * 0.8) * 0.02;
-
-        // Pulse growth cone parts (pulsers)
-        pulsers.forEach((p) => {
-          const s = p.base + Math.sin(time * p.freq + p.phase) * p.amp;
-          if (p.obj.scale) p.obj.scale.set(s, s, 1);
-        });
-
-        // Pulse Myelin sheath gloss
-        segmentMeshes.forEach((item) => {
-          if (item.type === 'sheath') {
-            item.mesh.material.emissiveIntensity = 0.25 + Math.sin(time * 3 + item.index) * 0.18;
-            item.mesh.scale.setScalar(1 + Math.sin(time * 2 + item.index) * 0.015);
-          }
-        });
-
-        // Saltatory Conduction jump animation (jumping node to node)
-        // We calculate which jump point we are on based on time cycle
-        const loopDuration = 3.6; // seconds
-        const tVal = (time % loopDuration) / loopDuration;
-
-        // Map progress along index of jump points
-        const jumpSegmentsCount = allJumpPoints.length - 1;
-        const progressSegment = tVal * jumpSegmentsCount;
-        const currentSegmentIndex = Math.floor(progressSegment);
-        const segmentProgress = progressSegment - currentSegmentIndex;
-
-        if (currentSegmentIndex < allJumpPoints.length && currentSegmentIndex >= 0) {
-          const ptA = allJumpPoints[currentSegmentIndex];
-          const ptB = allJumpPoints[Math.min(currentSegmentIndex + 1, allJumpPoints.length - 1)];
-
-          // Saltatory jump is a parabolic arc:
-          // X: linear lerp between node A and B
-          // Y: curved bump in the middle matching node junction skipping
-          const currentX = ptA + (ptB - ptA) * segmentProgress;
-          
-          // Only arc high in the skies between jumps
-          const distance = Math.abs(ptB - ptA);
-          const currentY = distance > 0.4 ? Math.sin(segmentProgress * Math.PI) * 0.62 : 0;
-          const currentZ = 0;
-
-          impulse.position.set(currentX, currentY, currentZ);
-          halo.position.set(currentX, currentY, currentZ);
-          pulseLight.position.set(currentX, currentY, currentZ + 0.5);
-
-          // Intensity spark flash at nodes
-          if (segmentProgress < 0.15 || segmentProgress > 0.85) {
-            impulse.scale.setScalar(1.3);
-            halo.scale.setScalar(1.2);
-            pulseLight.intensity = 2.4;
-          } else {
-            impulse.scale.setScalar(0.9);
-            halo.scale.setScalar(0.85);
-            pulseLight.intensity = 1.4;
-          }
-        }
-
-        // Rotate drifting ions
-        ions.forEach((ion) => {
-          ion.angle += 0.006 * ion.speed;
-          ion.mesh.position.y = Math.cos(ion.angle) * ion.radius;
-          ion.mesh.position.z = Math.sin(ion.angle) * ion.radius;
-          ion.mesh.position.x = ion.ox + Math.sin(time * 0.5 + ion.speed) * 0.2;
-        });
-
-        renderer.render(scene, camera);
-        animationFrameId = requestAnimationFrame(tick);
-      };
-
-      tick();
-
-      // 11. Resize Observer to keep container perfect
-      resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (!active) return;
-          const { width: w, height: h } = entry.contentRect;
-          if (w > 0 && h > 0) {
-            renderer.setSize(w, h);
-            camera.aspect = w / h;
-            camera.updateProjectionMatrix();
-          }
-        }
-      });
-      resizeObserver.observe(container);
-
-    }).catch((err) => {
-      console.warn('Could not load three.js dynamically:', err);
+    // Thin bare-fibre core spanning the full fixed length (continuity).
+    const coreMat = new THREE.MeshPhysicalMaterial({
+      color: isDark ? 0x2c4a37 : 0xc7d8cc,
+      roughness: 0.55,
+      metalness: 0,
+      transmission: 0.6,
+      thickness: 0.4,
+      ior: 1.4,
+      transparent: true,
+      opacity: 0.5,
+      emissive: new THREE.Color(0x6fd49a),
+      emissiveIntensity: 0,
     });
+    let coreMesh: THREE.Mesh | null = null;
+
+    function rebuildCore(curve: THREE.CatmullRomCurve3) {
+      if (coreMesh) {
+        coreMesh.geometry.dispose();
+        axonGroup.remove(coreMesh);
+      }
+      const geo = new THREE.TubeGeometry(curve, 80, 0.12, 10, false);
+      coreMesh = new THREE.Mesh(geo, coreMat);
+      axonGroup.add(coreMesh);
+    }
+
+    // Ranvier nodes — small faceted glass studs between completed beads.
+    const nodeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      roughness: 0.28,
+      roughnessMap,
+      normalMap,
+      normalScale: new THREE.Vector2(0.9, 0.9),
+      metalness: 0,
+      transmission: 1.0,
+      thickness: 0.7,
+      ior: 1.45,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.2,
+      envMap: envTex,
+      envMapIntensity: isDark ? 1.0 : 1.3,
+      transparent: true,
+      emissive: new THREE.Color(0x9bf6c4),
+      emissiveIntensity: 0,
+    });
+    interface NodeStud {
+      mesh: THREE.Mesh;
+      tAlong: number;
+    }
+    const nodes: NodeStud[] = [];
+    const nodeR = 0.26 * scale;
+    const nodeGeo = new THREE.SphereGeometry(nodeR, 24, 18);
+
+    for (let i = 0; i < completed; i++) {
+      const justMatured = justAdded > 0 && i >= completed - justAdded;
+      beads.push(buildBead(i, justMatured));
+      if (i < completed - 1) {
+        const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+        nodeMesh.scale.set(1, 0.82, 0.82); // slightly squashed bead-knot
+        const tA = beadCount > 1 ? (i + 0.5) / (beadCount - 1) : 0.5;
+        nodes.push({ mesh: nodeMesh, tAlong: tA });
+        axonGroup.add(nodeMesh);
+      }
+    }
+
+    // Glow travels only across the completed portion.
+    const completedT =
+      beadCount > 1 ? (completed - 1) / (beadCount - 1) : completed > 0 ? 1 : 0;
+
+    // ── Pointer parallax ──
+    let targetRotY = 0;
+    let targetRotX = 0;
+    const onPointerMove = (e: PointerEvent) => {
+      const b = container.getBoundingClientRect();
+      const mx = ((e.clientX - b.left) / b.width) * 2 - 1;
+      const my = -((e.clientY - b.top) / b.height) * 2 + 1;
+      targetRotY = mx * 0.32;
+      targetRotX = -my * 0.18;
+    };
+    const onPointerLeave = () => {
+      targetRotY = 0;
+      targetRotX = 0;
+    };
+    container.addEventListener('pointermove', onPointerMove);
+    container.addEventListener('pointerleave', onPointerLeave);
+
+    // ── Spine displacement + placement helpers ──
+    const clampT = (v: number) => Math.min(0.999, Math.max(0.001, v));
+    const tmpTan = new THREE.Vector3();
+    const tmpPos = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 0, 1);
+    const lookM = new THREE.Matrix4();
+
+    function buildSpineCurve(time: number) {
+      const amp = reduceMotion ? 0 : 0.42;
+      const pts = spineRest.map((p, i) => {
+        const phase = i * 0.9;
+        const y = Math.sin(time * 0.6 + phase) * amp;
+        const z = Math.cos(time * 0.45 + phase * 0.7) * amp * 0.6;
+        return new THREE.Vector3(p.x, p.y + y, p.z + z);
+      });
+      return new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
+    }
+
+    function placeAlong(
+      curve: THREE.CatmullRomCurve3,
+      tAlong: number,
+      obj: THREE.Object3D,
+      orient: boolean,
+    ) {
+      const ct = clampT(tAlong);
+      curve.getPointAt(ct, tmpPos);
+      obj.position.copy(tmpPos);
+      if (orient) {
+        curve.getTangentAt(ct, tmpTan);
+        // Align local -Z to the tangent, then rotate so local +X follows it
+        // (the capsule body cylinder runs along local +X).
+        lookM.lookAt(tmpPos, tmpPos.clone().add(tmpTan), up);
+        obj.quaternion.setFromRotationMatrix(lookM);
+        obj.rotateY(Math.PI / 2);
+      }
+    }
+
+    // ── Animation ──
+    let time = 0;
+    const loopDuration = 4.2; // seconds for one glow traversal
+
+    const tick = () => {
+      if (!active || !renderer) return;
+      time += 0.016;
+
+      const curve = buildSpineCurve(time);
+      rebuildCore(curve);
+
+      for (const b of beads) placeAlong(curve, b.tAlong, b.group, true);
+      for (const n of nodes) placeAlong(curve, n.tAlong, n.mesh, false);
+
+      axonGroup.rotation.y += (targetRotY - axonGroup.rotation.y) * 0.06;
+      axonGroup.rotation.x += (targetRotX - axonGroup.rotation.x) * 0.06;
+      if (!reduceMotion) axonGroup.rotation.z = Math.sin(time * 0.3) * 0.015;
+
+      if (completed > 0 && completedT > 0 && !reduceMotion) {
+        const cyclePos = (time % loopDuration) / loopDuration;
+        const headT = cyclePos * completedT;
+
+        curve.getPointAt(clampT(headT), tmpPos);
+        impulseLight.position.copy(tmpPos);
+        impulseLight.intensity = 1.6;
+
+        for (const b of beads) {
+          const d = b.tAlong - headT;
+          const glow = Math.max(0, 1 - Math.abs(d) / 0.14);
+          const lead = d > 0 && d < 0.05 ? 0.18 : 0; // faint anticipation
+          b.mat.emissiveIntensity =
+            (b.justMatured ? 0.1 : 0.03) + glow * 0.55 + lead;
+        }
+
+        let nearest = 1;
+        for (const n of nodes) {
+          const dist = Math.abs(n.tAlong - headT);
+          nearest = Math.min(nearest, dist);
+          const flare = Math.max(0, 1 - dist / 0.04) * 0.6;
+          n.mesh.scale.set(1 + flare, 0.82 + flare, 0.82 + flare);
+        }
+        nodeMat.emissiveIntensity = Math.max(0, 1 - nearest / 0.04) * 0.9;
+
+        coreMat.emissiveIntensity =
+          0.05 + Math.max(0, 1 - Math.abs(0.5 - cyclePos)) * 0.1;
+      } else {
+        impulseLight.intensity = 0;
+        for (const b of beads)
+          b.mat.emissiveIntensity = b.justMatured ? 0.12 : 0.04;
+        nodeMat.emissiveIntensity = 0.1;
+        coreMat.emissiveIntensity = 0.04;
+      }
+
+      renderer.render(scene, camera);
+      frameId = requestAnimationFrame(tick);
+    };
+    tick();
+
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (!active || !renderer) return;
+        const { width: w, height: h } = entry.contentRect;
+        if (w > 0 && h > 0) {
+          width = w;
+          height = h;
+          renderer.setSize(w, h);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+      }
+    });
+    resizeObserver.observe(container);
 
     return () => {
       active = false;
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (frameId) cancelAnimationFrame(frameId);
       if (resizeObserver) resizeObserver.disconnect();
-      if (containerRef.current && renderer) {
-        containerRef.current.removeEventListener('pointermove', () => {});
-        containerRef.current.querySelectorAll('canvas').forEach(c => c.remove());
-      }
-    };
-  }, [totalSegments, completedSegments, justAddedSegments]);
+      container.removeEventListener('pointermove', onPointerMove);
+      container.removeEventListener('pointerleave', onPointerLeave);
 
-  // Falling back to custom-rendered aesthetic SVG if THREE.js didn't mount yet
-  const n = Math.max(totalSegments, 1);
-  const centers = Array.from({ length: n }, (_, i) => {
-    const startX = 45;
-    const endX = 315;
-    const step = (endX - startX) / (n - 1 || 1);
-    return startX + i * step;
-  });
-  const rx = n === 6 ? 20 : Math.min(20, (360 - 80) / n * 0.42);
-  const ry = n === 6 ? 12 : Math.min(12, rx * 0.6);
+      normalMap.dispose();
+      roughnessMap.dispose();
+      envTex.dispose();
+      for (const b of beads) {
+        b.group.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.geometry) m.geometry.dispose();
+        });
+        b.mat.dispose();
+      }
+      for (const n of nodes) n.mesh.scale.set(1, 0.82, 0.82);
+      nodeGeo.dispose();
+      nodeMat.dispose();
+      coreMat.dispose();
+      if (coreMesh) coreMesh.geometry.dispose();
+      renderer.dispose();
+      container.querySelectorAll('canvas').forEach((c) => c.remove());
+    };
+  }, [totalSegments, completedSegments, justAddedSegments, isDark]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-[150px] relative rounded-2xl overflow-hidden transition-all duration-700"
+      className="w-full h-[220px] relative rounded-2xl overflow-hidden transition-all duration-700"
       style={{
-        background: 'radial-gradient(120% 140% at 20% 0%, rgba(30,28,26,0.98) 0%, rgba(18,17,16,0.99) 55%, rgba(10,10,10,1) 100%)',
-        boxShadow: '0 16px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,175,55,0.15), inset 0 0 60px rgba(0,0,0,0.5)'
+        background: isDark
+          ? 'radial-gradient(120% 140% at 20% 0%, rgba(24,48,31,0.96) 0%, rgba(13,30,21,0.98) 55%, rgba(7,17,11,1) 100%)'
+          : 'radial-gradient(120% 140% at 20% 0%, rgba(255,255,255,0.9) 0%, rgba(238,236,231,0.92) 55%, rgba(223,221,215,0.95) 100%)',
+        border: '1px solid var(--glass-border)',
+        boxShadow: isDark
+          ? '0 16px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)'
+          : '0 16px 40px rgba(26,26,26,0.10), inset 0 1px 0 rgba(255,255,255,0.7)',
+        backdropFilter: 'blur(8px)',
       }}
     >
-      {/* 2D Fallback shown ONLY during loading of THREE.js */}
-      {!threeLoaded && (
-        <div className="absolute inset-0">
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'radial-gradient(60% 90% at 50% 55%, rgba(99,193,138,0.10), transparent 70%)',
-            }}
-          />
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 360 150" name="axon-svg" preserveAspectRatio="xMidYMid meet">
-            <line x1="20" y1="74" x2="340" y2="74" stroke="rgba(120,160,140,0.25)" strokeWidth="3.5" strokeLinecap="round" />
-            <line x1="20" y1="74" x2="340" y2="74" stroke="rgba(190,235,210,0.35)" strokeWidth="1.2" strokeLinecap="round" />
-            <g style={{ transformOrigin: 'center' }}>
-              {centers.map((cx, i) => {
-                const isCompleted = i < completedSegments;
-                if (!isCompleted) {
-                  return (
-                    <ellipse
-                      key={i}
-                      cx={cx}
-                      cy="74"
-                      rx={rx}
-                      ry={ry - 1}
-                      fill="none"
-                      stroke="rgba(99,193,138,0.18)"
-                      strokeWidth="1"
-                      strokeDasharray="2 5"
-                    />
-                  );
-                }
-                return (
-                  <g key={i}>
-                    <ellipse cx={cx} cy="75.5" rx={rx} ry={ry} fill="rgba(0,0,0,0.28)" />
-                    <ellipse cx={cx} cy="74" rx={rx} ry={ry} fill="rgba(212,175,55,0.3)" />
-                    <ellipse cx={cx} cy="74" rx={rx} ry={ry} fill="none" stroke="rgba(212,175,55,0.15)" strokeWidth="0.6" />
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
-        </div>
+      {!threeReady && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(60% 90% at 50% 55%, var(--glass-2), transparent 70%)',
+          }}
+        />
       )}
 
-      {/* Info Overlay */}
       <div className="absolute inset-0 flex flex-col justify-between pointer-events-none select-none p-4 z-20">
         <div className="flex items-center gap-2">
           <div
             className="w-1.5 h-1.5 rounded-full"
             style={{
-              background: '#d4af37',
-              boxShadow: '0 0 8px rgba(212,175,55,0.8)',
+              background: 'var(--accent-ink)',
+              boxShadow: '0 0 8px var(--accent-ink)',
             }}
           />
-          <span className="font-mono text-[9px] uppercase tracking-[0.22em]" style={{ color: 'rgba(212,175,55,0.7)' }}>
+          <span
+            className="font-mono text-[9px] uppercase tracking-[0.22em]"
+            style={{ color: 'var(--ink3)' }}
+          >
             Аксон · Миелинизация 3D
           </span>
         </div>
         <div className="flex items-end justify-between">
-          <span className="font-mono text-[10px]" style={{ color: 'rgba(212,175,55,0.7)' }}>
+          <span className="font-mono text-[10px]" style={{ color: 'var(--ink3)' }}>
             {completedSegments} / {totalSegments} сегментов
           </span>
-          <span className="font-mono text-[10px] tracking-wider" style={{ color: 'rgba(212,175,55,0.55)' }}>
+          <span
+            className="font-mono text-[10px] tracking-wider"
+            style={{ color: 'var(--ink3)' }}
+          >
             ЦИКЛ {cycleNumber}
           </span>
         </div>

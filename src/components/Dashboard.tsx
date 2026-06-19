@@ -154,7 +154,7 @@ export function Dashboard() {
 
         {/* Vertical connector */}
         <div
-          className="absolute left-[39px] top-[148px] w-0.5"
+          className="absolute left-[39px] top-[218px] w-0.5"
           style={{
             background: `linear-gradient(to bottom, var(--border), rgba(120,154,132,0.15), transparent)`,
             height: 'calc(100% - 15rem)',

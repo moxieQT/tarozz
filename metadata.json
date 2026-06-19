@@ -1,6 +1,5 @@
 {
-  "name": "Soul Cards Feed",
-  "description": "A vertical-scroll card feed application with a customizable personal deck and intensity rating logic.",
-  "requestFramePermissions": [],
+  "name": "Soul Cards",
+  "description": "Feed and card application",
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
