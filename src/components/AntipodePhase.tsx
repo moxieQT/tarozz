@@ -37,16 +37,16 @@ export function AntipodePhase() {
             transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
           }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen"
-          style={{ background: 'var(--accent)', opacity: 0.15, filter: 'blur(80px)' }}
+          className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full "
+          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.15}}
         />
         <motion.div
           animate={{
             transform: ['translate(0%, 0%) scale(1)', 'translate(5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
           }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full mix-blend-screen"
-          style={{ background: 'var(--ink)', opacity: 0.05, filter: 'blur(100px)' }}
+          className="absolute bottom-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full "
+          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05}}
         />
       </div>
 
@@ -62,10 +62,10 @@ export function AntipodePhase() {
       <div
         className="flex-1 overflow-hidden relative flex flex-col w-full max-w-2xl mx-auto z-10"
       >
-        <div className="flex-1 min-h-0 flex flex-col items-center p-6 pt-24 pb-8 relative z-10 max-w-[380px] w-full mx-auto">
-          <div className="text-center mb-8 flex-shrink-0">
-            <h2 className="text-5xl font-serif italic mb-4 leading-tight" style={{ color: 'var(--ink)' }}>Ваш<br/>Антипод</h2>
-            <p className="text-[12px] uppercase tracking-[0.2em] font-mono font-bold" style={{ color: 'var(--ink3)' }}>
+        <div className="flex-1 min-h-0 flex flex-col items-center p-4 pt-6 pb-4 relative z-10 max-w-[420px] w-full mx-auto">
+          <div className="text-center mb-4 flex-shrink-0">
+            <h2 className="text-4xl font-serif italic mb-2 leading-tight" style={{ color: 'var(--ink)' }}>Ваш Антипод</h2>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-mono font-bold" style={{ color: 'var(--ink3)' }}>
               Основано на выборе из Картографии.
             </p>
           </div>
@@ -73,11 +73,9 @@ export function AntipodePhase() {
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="w-full flex-1 min-h-0 rounded-[32px] relative overflow-hidden flex flex-col backdrop-blur-xl"
+            className="w-full flex-1 min-h-0 rounded-[24px] relative overflow-hidden flex flex-col"
             style={{ 
-              background: 'var(--glass-2)',
-              border: '1px solid var(--glass-border)',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.15), inset 0 1px 2px rgba(255,255,255,0.3)'
+              boxShadow: '0 30px 60px rgba(0,0,0,0.15)'
             }}
           >
             {antipodeCard.imageUrl && !imageError && (
@@ -85,16 +83,13 @@ export function AntipodePhase() {
                 src={antipodeCard.imageUrl}
                 alt={antipodeCard.title}
                 onError={() => setImageError(true)}
-                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
-                style={{ opacity: 0.8 }}
+                className="absolute inset-0 w-full h-full object-contain"
               />
             )}
-            {/* Target glow effect inside card */}
-            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.1), transparent 60%)' }} />
           </motion.div>
         </div>
 
-        <div className="px-6 pb-12 relative z-10 w-full max-w-[380px] mx-auto">
+        <div className="px-6 pb-12 relative z-10 w-full max-w-[420px] mx-auto">
           <button
             onClick={() => {
               completePhase(currentPhaseId, {});

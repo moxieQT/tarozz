@@ -4,7 +4,7 @@ import {
   ArrowLeft, Crown, User, Flame, Layers, RefreshCw,
   Calendar, ChevronDown, Lock, Star, BookOpen, 
   Eye, Heart, Compass, Zap, PenTool, Moon,
-  Shield, Mail, Repeat, Settings, Brain, LogOut
+  Shield, Mail, Repeat, Settings, Brain, LogOut, Globe
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore, CycleRecord } from '../store';
@@ -239,6 +239,19 @@ export function ProfilePage() {
   const [nameInput, setNameInput] = useState(profile.name);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const LANGUAGES = [
+    { code: 'ru', label: 'Русский' },
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'zh-CN', label: '中文' },
+    { code: 'kk', label: 'Қазақша' }
+  ];
+  const { globalLanguage, setGlobalLanguage } = useAppStore();
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [tempLang, setTempLang] = useState(globalLanguage || 'ru');
+
 
 
   const [neuronInsight, setNeuronInsight] = useState<string>('');
@@ -340,16 +353,16 @@ export function ProfilePage() {
             transform: ['translate(0%, 0%) scale(1)', 'translate(5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
           }}
           transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen"
-          style={{ background: isPremium ? '#8E6F3E' : 'var(--accent)', opacity: 0.12, filter: 'blur(80px)' }}
+          className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full"
+          style={{ background: `radial-gradient(circle, ${isPremium ? '#8E6F3E' : 'var(--accent)'} 0%, transparent 70%)`, opacity: 0.12 }}
         />
         <motion.div
           animate={{
             transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
           }}
           transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute top-[40%] right-[-20%] w-[70vw] h-[70vw] rounded-full mix-blend-screen"
-          style={{ background: 'var(--ink)', opacity: 0.05, filter: 'blur(100px)' }}
+          className="absolute top-[40%] right-[-20%] w-[70vw] h-[70vw] rounded-full "
+          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05}}
         />
       </div>
 
@@ -779,6 +792,67 @@ export function ProfilePage() {
                   </span>
                 )}
               </button>
+
+              {/* Language toggle */}
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setShowLangMenu(!showLangMenu)}
+                  className="w-full p-4 rounded-[20px] flex items-center gap-4 text-left transition-all backdrop-blur-md"
+                  style={{
+                    background: 'var(--glass-2)',
+                    border: '1px solid var(--glass-border)',
+                    boxShadow: '0 10px 30px -10px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  <div className="w-9 h-9 rounded-[10px] flex items-center justify-center" style={{ background: 'var(--glass-2)' }}>
+                    <Globe size={16} style={{ color: 'var(--ink)' }} />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[13px] font-bold block" style={{ color: 'var(--ink)' }}>Язык приложения</span>
+                    <span className="text-[11px]" style={{ color: 'var(--ink3)' }}>
+                      {LANGUAGES.find(l => l.code === (showLangMenu ? tempLang : globalLanguage))?.label}
+                    </span>
+                  </div>
+                  <ChevronDown size={14} style={{ color: 'var(--ink3)', transform: showLangMenu ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                </button>
+                <AnimatePresence>
+                  {showLangMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-4 rounded-[20px] flex flex-col gap-2" style={{ background: 'var(--glass-2)', border: '1px solid var(--glass-border)' }}>
+                        {LANGUAGES.map(lang => (
+                          <button
+                            key={lang.code}
+                            onClick={() => setTempLang(lang.code)}
+                            className="p-2 text-left rounded-lg transition-colors flex justify-between items-center"
+                            style={{ 
+                              background: tempLang === lang.code ? 'var(--placeholder)' : 'transparent',
+                              color: 'var(--ink)'
+                            }}
+                          >
+                            <span className="text-[13px]">{lang.label}</span>
+                            {tempLang === lang.code && <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => {
+                            setGlobalLanguage(tempLang);
+                            setShowLangMenu(false);
+                          }}
+                          className="mt-2 py-3 rounded-xl text-[13px] font-bold transition-all active:scale-95"
+                          style={{ background: 'var(--ink)', color: 'var(--surface)' }}
+                        >
+                          Применить
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* Subscription status */}
               <div

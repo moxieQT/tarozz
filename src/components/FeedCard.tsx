@@ -14,35 +14,20 @@ export const FeedCard: React.FC<FeedCardProps> = ({ card, isActive, onTap, index
   const cardNum = card.id.split('-')[1] || '?';
 
   return (
-    <div className="snap-section w-full h-[100dvh] pb-[80px] flex items-center justify-center p-6 relative">
+    <div className="snap-section w-full h-[100dvh] pb-[80px] flex items-center justify-center p-4 relative">
       <motion.div
         whileTap={{ scale: 0.97 }}
         onClick={() => onTap(card)}
-        className="w-full max-w-[360px] max-h-[720px] aspect-[5/9] rounded-[24px] shadow-[0_40px_100px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden relative cursor-pointer"
+        className="w-full max-w-[420px] max-h-[85dvh] h-full rounded-[24px] shadow-[0_40px_100px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden relative cursor-pointer"
         style={{ background: 'var(--card)', border: '2px solid var(--hair)' }}
       >
         {/* Image area */}
         <div
-          className="h-[85%] relative flex flex-col items-center justify-center p-0 overflow-hidden"
-          style={{ background: 'var(--placeholder)', borderBottom: '1px solid var(--hair)' }}
+          className="flex-1 relative flex flex-col items-center justify-center p-0 overflow-hidden"
+          style={{ background: 'transparent' }}
         >
           {card.imageUrl ? (
-            <>
-              <img src={card.imageUrl} alt={card.title} className="w-full h-full object-contain" />
-              {/* Bottom gradient for readability */}
-              <div
-                className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)' }}
-              />
-              <div className="absolute bottom-4 left-5 right-5 z-10">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-white/70 mb-1">
-                  Arcanum {cardNum}
-                </div>
-                <div className="text-xl font-serif italic text-white leading-tight">
-                  {card.title}
-                </div>
-              </div>
-            </>
+            <img src={card.imageUrl} alt={card.title} loading="lazy" className="w-full h-full object-contain" />
           ) : (
             <>
               {/* Decorative frame for placeholder */}
@@ -53,17 +38,6 @@ export const FeedCard: React.FC<FeedCardProps> = ({ card, isActive, onTap, index
                 <span className="text-8xl font-serif italic" style={{ color: 'var(--ink)', opacity: 0.08 }}>
                   {cardNum}
                 </span>
-              </div>
-              <div className="absolute bottom-4 left-5 z-10">
-                <div
-                  className="text-[10px] uppercase tracking-widest font-bold mb-1"
-                  style={{ color: 'var(--ink)', opacity: 0.5 }}
-                >
-                  Arcanum {cardNum}
-                </div>
-                <div className="text-xl font-serif italic leading-tight" style={{ color: 'var(--ink)' }}>
-                  {card.title}
-                </div>
               </div>
             </>
           )}
@@ -83,18 +57,25 @@ export const FeedCard: React.FC<FeedCardProps> = ({ card, isActive, onTap, index
 
         {/* Bottom bar */}
         <div
-          className="px-4 py-3 flex-1 flex items-center justify-between"
-          style={{ background: 'var(--card)' }}
+          className="px-5 py-4 flex flex-col justify-center"
+          style={{ background: 'var(--card)', borderTop: '1px solid var(--hair)' }}
         >
-          <span
-            className="text-[10px] uppercase tracking-widest font-bold"
-            style={{ color: 'var(--ink)' }}
-          >
-            Калибровка
-          </span>
-          <span className="text-[10px] font-mono" style={{ color: 'var(--ink3)' }}>
-            Нажмите →
-          </span>
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+               <span
+                className="text-[10px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: 'var(--ink3)' }}
+              >
+                Arcanum {cardNum}
+              </span>
+              <span className="text-lg font-serif italic leading-tight text-left" style={{ color: 'var(--ink)' }}>
+                {card.title}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono whitespace-nowrap ml-4" style={{ color: 'var(--ink3)' }}>
+              Калибровка →
+            </span>
+          </div>
         </div>
       </motion.div>
     </div>

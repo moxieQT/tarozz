@@ -19,7 +19,7 @@ export function ProfileButton() {
       style={{
         position: 'fixed',
         top: '16px',
-        right: '64px', // Next to GearButton
+        right: '16px',
         width: '42px',
         height: '42px',
         display: 'flex',

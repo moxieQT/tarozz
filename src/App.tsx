@@ -4,9 +4,9 @@ import { useAppStore } from './store';
 import { ThemeProvider } from './context/ThemeContext';
 
 import { BottomNav } from './components/BottomNav';
-import { GearButton } from './components/GearButton';
 import { PaywallModal } from './components/PaywallModal';
 import { ProfileButton } from './components/ProfileButton';
+import { GoogleTranslate } from './components/GoogleTranslate';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Home, Map, Loader2 } from 'lucide-react';
 
@@ -112,8 +112,8 @@ export function CartographyAppContent() {
 export default function App() {
   return (
     <ThemeProvider>
+      <GoogleTranslate />
       <div className="h-[100dvh] w-full overflow-y-auto font-sans" style={{ backgroundColor: 'var(--surface)', color: 'var(--ink)' }}>
-        <GearButton variant="fixed" />
         <ProfileButton />
         <PaywallModal />
         

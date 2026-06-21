@@ -13,15 +13,32 @@ export const FeedPage: React.FC = () => {
   const cardLimit = getCardLimit(subscription);
   const atLimit = savedCards.length >= cardLimit && subscription === 'free';
 
-  const availableCards = INITIAL_CARDS.filter(card => !removedIds.includes(card.id));
+  const availableCards = React.useMemo(() => INITIAL_CARDS.filter(card => !removedIds.includes(card.id)), [removedIds]);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [toastIntensity, setToastIntensity] = useState<number | null>(null);
   const [insightText, setInsightText] = useState<string | undefined>(undefined);
+  
+  const [visibleCount, setVisibleCount] = useState(5);
 
-  const totalCards = subscription === 'premium' ? INITIAL_CARDS.length : cardLimit;
+  const totalCards = React.useMemo(() => subscription === 'premium' ? INITIAL_CARDS.length : cardLimit, [subscription, cardLimit]);
   const reviewedCount = savedCards.length;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!containerRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      if (scrollHeight - scrollTop <= clientHeight * 2) {
+        setVisibleCount((prev) => Math.min(prev + 5, availableCards.length));
+      }
+    };
+    const node = containerRef.current;
+    if (node) {
+      node.addEventListener('scroll', handleScroll);
+      return () => node.removeEventListener('scroll', handleScroll);
+    }
+  }, [availableCards.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -155,7 +172,7 @@ export const FeedPage: React.FC = () => {
       </div>
 
       <div ref={containerRef} className="snap-container pb-24 absolute inset-0 z-10 pt-8">
-        {availableCards.map((card, idx) => (
+        {availableCards.slice(0, visibleCount).map((card, idx) => (
           <FeedCard
             key={card.id}
             card={card}

@@ -68,16 +68,16 @@ export function Gatekeeper() {
             transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
           }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen"
-          style={{ background: 'var(--accent)', opacity: 0.15, filter: 'blur(80px)' }}
+          className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full "
+          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.15}}
         />
         <motion.div
           animate={{
             transform: ['translate(0%, 0%) scale(1)', 'translate(5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
           }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full mix-blend-screen"
-          style={{ background: 'var(--ink)', opacity: 0.05, filter: 'blur(100px)' }}
+          className="absolute bottom-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full "
+          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05}}
         />
       </div>
 

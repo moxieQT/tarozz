@@ -56,6 +56,10 @@ interface AppState {
   removedIds: string[];
   activeTab: 'feed' | 'deck';
 
+  // === NEW: App Setup ===
+  globalLanguage: string;
+  setGlobalLanguage: (lang: string) => void;
+
   // === NEW: Subscription & Profile ===
   subscription: SubscriptionTier;
   profile: UserProfile;
@@ -178,6 +182,8 @@ export const useAppStore = create<AppState>()(
       savedCards: [],
       removedIds: [],
       activeTab: 'feed',
+      
+      globalLanguage: 'ru',
 
       // New state
       subscription: 'free' as SubscriptionTier,
@@ -198,6 +204,8 @@ export const useAppStore = create<AppState>()(
       journalEntries: [],
       showPaywall: false,
       paywallTrigger: '',
+
+      setGlobalLanguage: (lang) => set({ globalLanguage: lang }),
 
       // === Original methods ===
       setPath: (pathId, phases) => set({

@@ -155,7 +155,7 @@ export const DeckPage: React.FC = () => {
                   }}
                 >
                   {card.imageUrl ? (
-                    <img src={card.imageUrl} alt={card.title} className="w-full h-full object-contain" />
+                    <img src={card.imageUrl} alt={card.title} loading="lazy" className="w-full h-full object-contain" />
                   ) : (
                     <>
                       <span
