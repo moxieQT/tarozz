@@ -5,6 +5,7 @@ import { useAppStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, BookOpen, Shield, AlertCircle, Activity, ArrowRight, ArrowUpRight, Lock, Crown } from 'lucide-react';
 import { canAccessMode } from '../data/subscription';
+import { AtmosphericBackground } from './AtmosphericBackground';
 
 const ICONS: Record<string, React.ReactNode> = {
   solo: <Sparkles className="w-6 h-6" />,
@@ -38,28 +39,7 @@ export function ModeSelection() {
       className="min-h-screen relative flex flex-col overflow-x-hidden font-sans"
       style={{ backgroundColor: 'var(--surface)' }}
     >
-      {/* 
-        GLASSMORPHISM 3.0 - LAYER 1: Breathing Atmospheric Background
-        Живые сферы, которые медленно перемещаются, создавая базу для преломления света.
-      */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full"
-          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.15 }}
-        />
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-[40%] right-[-20%] w-[70vw] h-[70vw] rounded-full"
-          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05 }}
-        />
-      </div>
+      <AtmosphericBackground variant={1} />
 
       <div className="flex-1 w-full px-6 pt-16 pb-24 relative z-10 flex flex-col max-w-2xl mx-auto">
         

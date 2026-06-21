@@ -45,6 +45,11 @@ body {
   --glass-border: rgba(26,26,26,0.08);
   --glass-border-2: rgba(26,26,26,0.14);
   --glass-line: rgba(26,26,26,0.06);
+
+  /* Danger / emergency — theme-aware so alerts stay legible in both modes */
+  --danger-bg: #FEF2F2;
+  --danger-border: #FECACA;
+  --danger-ink: #DC2626;
 }
 
 [data-theme="dark"] {
@@ -70,6 +75,10 @@ body {
   --glass-border: rgba(255,255,255,0.12);
   --glass-border-2: rgba(255,255,255,0.22);
   --glass-line: rgba(255,255,255,0.08);
+
+  --danger-bg: rgba(220,38,38,0.14);
+  --danger-border: rgba(248,113,113,0.38);
+  --danger-ink: #FCA5A5;
 }
 
 html, body, #root {

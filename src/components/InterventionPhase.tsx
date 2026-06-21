@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/re
 import { useAppStore } from '../store';
 import { Layers, ArrowRight, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AtmosphericBackground } from './AtmosphericBackground';
 
 const INTERVENTION_CARDS = [
   { id: 1, title: 'Темп-Дроп', series: 'I Регуляция', modality: 'ДБТ ТИПП-Т (рефлекс ныряльщика)', goal: 'Острая дисрегуляция, паника, импульс селфхарма' },
@@ -128,32 +129,15 @@ export function InterventionPhase() {
       className="min-h-screen relative flex flex-col font-sans overflow-x-hidden"
       style={{ backgroundColor: 'var(--surface)' }}
     >
-      {/* GLASSMORPHISM 3.0 - LAYER 1: Breathing Atmospheric Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full "
-          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.15}}
-        />
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full "
-          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05}}
-        />
-      </div>
+      <AtmosphericBackground variant={2} />
 
       <button
         onClick={() => navigate('/dashboard')}
+        aria-label="На главный экран"
         className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all backdrop-blur-xl"
         style={{ background: 'var(--glass-1)', border: '1px solid var(--glass-border)', color: 'var(--ink2)' }}
       >
-        <Home size={16} />
+        <Home size={16} aria-hidden="true" />
         <span>Домой</span>
       </button>
       <div

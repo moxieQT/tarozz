@@ -71,10 +71,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                 </h3>
                 <button
                   onClick={onClose}
+                  aria-label="Закрыть"
                   className="p-3 -mr-2 rounded-full transition-all hover:bg-[rgba(255,255,255,0.1)] backdrop-blur-md"
                   style={{ color: 'var(--ink)', border: '1px solid var(--glass-border)' }}
                 >
-                  <X size={20} />
+                  <X size={20} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -114,6 +115,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                   step="1"
                   value={intensity}
                   onChange={(e) => setIntensity(Number(e.target.value))}
+                  aria-label="Уровень узнаваемости"
+                  aria-valuetext={`${currentLabel}, ${intensity}%`}
                   className="w-full h-[3px] appearance-none cursor-pointer outline-none z-10 rounded-full"
                   style={{
                     background: `linear-gradient(to right, var(--accent) ${intensity}%, rgba(255,255,255,0.1) ${intensity}%)`,

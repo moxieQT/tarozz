@@ -4,7 +4,6 @@ export interface TierFeatures {
   maxCards: number;
   maxInterventionCards: number;
   modes: string[];
-  hasAIReflection: boolean;
   hasJournal: boolean;
   hasAudio: boolean;
   hasPdfExport: boolean;
@@ -19,8 +18,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierFeatures> = {
   free: {
     maxCards: 10,
     maxInterventionCards: 6,
-    modes: ['solo'],
-    hasAIReflection: false,
+    // Crisis mode is always available — emergency support must never be paywalled.
+    modes: ['solo', 'crisis'],
     hasJournal: false,
     hasAudio: false,
     hasPdfExport: false,
@@ -34,7 +33,6 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierFeatures> = {
     maxCards: 79,
     maxInterventionCards: 18,
     modes: ['solo', 'therapeutic', 'cbt', 'schema', 'full', 'crisis'],
-    hasAIReflection: true,
     hasJournal: true,
     hasAudio: true,
     hasPdfExport: true,

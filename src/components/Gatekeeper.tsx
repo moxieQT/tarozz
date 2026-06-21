@@ -4,6 +4,8 @@ import { AlertTriangle, ArrowRight, ShieldAlert, Check, Home } from 'lucide-reac
 import { useAppStore } from '../store';
 import { PHASES } from '../data/phases';
 import { useNavigate } from 'react-router-dom';
+import { AtmosphericBackground } from './AtmosphericBackground';
+import { CrisisResources } from './CrisisResources';
 
 export function Gatekeeper() {
   const { completePhase, activePathPhases, currentPhaseIndex } = useAppStore();
@@ -61,25 +63,7 @@ export function Gatekeeper() {
       className="min-h-screen relative flex flex-col font-sans overflow-x-hidden"
       style={{ backgroundColor: 'var(--surface)' }}
     >
-      {/* GLASSMORPHISM 3.0 - LAYER 1: Breathing Atmospheric Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full "
-          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.15}}
-        />
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full "
-          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05}}
-        />
-      </div>
+      <AtmosphericBackground variant={2} />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -91,10 +75,11 @@ export function Gatekeeper() {
       >
         <button
           onClick={() => navigate('/dashboard')}
+          aria-label="На главный экран"
           className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all backdrop-blur-xl shadow-sm"
           style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--ink2)' }}
         >
-          <Home size={16} />
+          <Home size={16} aria-hidden="true" />
           <span>Домой</span>
         </button>
 
@@ -120,6 +105,8 @@ export function Gatekeeper() {
             </p>
           </div>
 
+        <CrisisResources />
+
         {/* Readiness Markers */}
         {phase.readinessMarkers.length > 0 && (
           <div className="space-y-4">
@@ -130,6 +117,8 @@ export function Gatekeeper() {
               <button
                 key={m.id}
                 onClick={() => toggleMarker(m.id)}
+                role="checkbox"
+                aria-checked={acceptedMarkers.has(m.id)}
                 className="w-full flex items-start text-left p-5 rounded-[20px] transition-all duration-300 backdrop-blur-md"
                 style={
                   acceptedMarkers.has(m.id)
@@ -177,7 +166,9 @@ export function Gatekeeper() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => denyContraindication(c.id)}
-                      className="flex-1 py-2 rounded-full text-[13px] font-semibold transition-all duration-200"
+                      aria-pressed={isDenied}
+                      aria-label={`Нет — «${c.text}»`}
+                      className="flex-1 py-3 rounded-full text-[13px] font-semibold transition-all duration-200"
                       style={
                         isDenied
                           ? { background: 'var(--accent)', color: '#fff', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }
@@ -188,7 +179,8 @@ export function Gatekeeper() {
                     </button>
                     <button
                       onClick={() => acceptContraindication(c.id)}
-                      className="flex-1 py-2 rounded-full text-[13px] font-semibold transition-all duration-200"
+                      aria-label={`Да — «${c.text}»`}
+                      className="flex-1 py-3 rounded-full text-[13px] font-semibold transition-all duration-200"
                       style={{ background: 'var(--surface)', color: 'var(--ink2)', border: '1px solid var(--border)' }}
                     >
                       Да
@@ -203,11 +195,12 @@ export function Gatekeeper() {
         <AnimatePresence>
           {showError && (
             <motion.div
+              role="alert"
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: '1rem' }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
               className="p-4 rounded-xl text-sm text-center"
-              style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}
+              style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-ink)' }}
             >
               Необходимо подтвердить все пункты для соблюдения техники безопасности.
             </motion.div>
@@ -217,6 +210,7 @@ export function Gatekeeper() {
         <div className="pt-8">
           <button
             onClick={handleEnter}
+            aria-disabled={!isReady}
             className={`w-full py-4 rounded-[16px] flex items-center justify-center gap-3 transition-all relative overflow-hidden group ${
               isReady ? 'active:scale-[0.98]' : 'opacity-60 cursor-not-allowed'
             }`}

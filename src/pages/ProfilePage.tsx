@@ -303,11 +303,8 @@ export function ProfilePage() {
     navigate('/');
   };
 
-  const handleNeuronTap = async (neuron: Neuron) => {
-    setNeuronInsight('Загрузка инсайта…');
-    setTimeout(() => {
-      setNeuronInsight('Нейрон интегрирован в гранулярный слой зубчатой извилины.');
-    }, 500);
+  const handleNeuronTap = (neuron: Neuron) => {
+    setNeuronInsight('Нейрон интегрирован в гранулярный слой зубчатой извилины.');
   };
 
   // Generate 1 neuron per completed cycle (regime) with proper connections
@@ -641,7 +638,7 @@ export function ProfilePage() {
                       Разблокировать Premium
                     </div>
                     <div className="text-[12px]" style={{ color: 'var(--ink2)' }}>
-                      Все режимы, полная колода, AI-рефлексия
+                      Все режимы, полная колода, журнал и экспорт
                     </div>
                   </div>
                   <div className="absolute top-0 left-[-100%] w-[50%] h-full mix-blend-overlay bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[30deg] group-hover:left-[200%] transition-all duration-1000 ease-in-out" />
@@ -786,11 +783,6 @@ export function ProfilePage() {
                   <span className="text-[13px] font-bold block" style={{ color: 'var(--ink)' }}>Тема</span>
                   <span className="text-[11px]" style={{ color: 'var(--ink3)' }}>{isDark ? 'Тёмная' : 'Светлая'}</span>
                 </div>
-                {!isPremium && isDark && (
-                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full" style={{ background: 'rgba(196,163,90,0.15)', color: '#C4A35A' }}>
-                    Premium
-                  </span>
-                )}
               </button>
 
               {/* Language toggle */}
@@ -913,8 +905,7 @@ export function ProfilePage() {
                 {[
                   { label: 'Карт в колоде', value: features.maxCards === 79 ? 'Все 79' : `До ${features.maxCards}` },
                   { label: 'Интервенций', value: features.maxInterventionCards === 18 ? 'Все 18' : `${features.maxInterventionCards} из 18` },
-                  { label: 'Режимы', value: isPremium ? 'Все 4' : 'Только Соло' },
-                  { label: 'AI-рефлексия', value: features.hasAIReflection ? 'Да' : 'Нет' },
+                  { label: 'Режимы', value: isPremium ? 'Все режимы' : 'Соло и кризис' },
                   { label: 'PDF-экспорт', value: features.hasPdfExport ? 'Да' : 'Нет' },
                   { label: 'Инсайт-журнал', value: features.hasJournal ? 'Да' : 'Нет' },
                 ].map((item, i) => (

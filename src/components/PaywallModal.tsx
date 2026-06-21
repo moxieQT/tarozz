@@ -2,20 +2,19 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Crown, Layers, Brain, Headphones, Download,
-  BookOpen, Flame, Shield, Sparkles, Check,
+  BookOpen, Flame, Shield, Check,
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { PRICING_OPTIONS } from '../data/subscription';
 
 const FEATURES = [
   { icon: <Layers size={16} />, text: 'Полная колода — 79 карт с многослойным контентом' },
-  { icon: <Brain size={16} />, text: 'Все 4 режима включая терапевтический и кризисный' },
-  { icon: <Sparkles size={16} />, text: 'AI-рефлексия после каждой фазы' },
+  { icon: <Brain size={16} />, text: 'Терапевтические режимы: КПТ, схема-терапия и глубокая работа' },
   { icon: <BookOpen size={16} />, text: 'Инсайт-журнал с историей прохождений' },
   { icon: <Headphones size={16} />, text: 'Аудио-слой для дыхательных практик' },
   { icon: <Download size={16} />, text: 'PDF-экспорт плана безопасности и отчётов' },
   { icon: <Flame size={16} />, text: 'Серии практики и система достижений' },
-  { icon: <Shield size={16} />, text: 'Тёмная тема и расширенные настройки' },
+  { icon: <Shield size={16} />, text: 'Экспорт для терапевта и расширенные настройки' },
 ];
 
 export function PaywallModal() {

@@ -51,8 +51,8 @@ export function CartographyAppContent() {
 
   return (
     <div className="h-full w-full max-w-[420px] mx-auto relative flex flex-col sm:shadow-[0_40px_100px_rgba(0,0,0,0.12)] sm:rounded-[36px] sm:border-[8px]" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--bezel)' }}>
-      <button onClick={() => navigate('/dashboard')} className="absolute top-4 left-4 z-[100] flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-md border shadow-sm">
-        <Home size={14} /> <span>Карта</span>
+      <button onClick={() => navigate('/dashboard')} aria-label="К карте пути" className="absolute top-4 left-4 z-[100] flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium backdrop-blur-md border shadow-sm">
+        <Home size={14} aria-hidden="true" /> <span>Карта</span>
       </button>
 
       <div className="flex-1 overflow-hidden relative sm:rounded-[28px]" style={{ backgroundColor: 'var(--sunken)' }}>

@@ -18,6 +18,8 @@ export const BottomNav: React.FC = () => {
       <div className="flex justify-around items-center max-w-sm mx-auto h-14">
         <button
           onClick={() => setActiveTab('feed')}
+          aria-label="Лента карт"
+          aria-current={activeTab === 'feed' ? 'page' : undefined}
           className="relative flex flex-col items-center gap-1.5 transition-colors"
           style={{ color: activeTab === 'feed' ? 'var(--accent-ink)' : 'var(--ink3)' }}
         >
@@ -35,6 +37,8 @@ export const BottomNav: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('deck')}
+          aria-label={`Колода${savedCards.length > 0 ? `, сохранено карт: ${savedCards.length}` : ''}`}
+          aria-current={activeTab === 'deck' ? 'page' : undefined}
           className="relative flex flex-col items-center gap-1.5 transition-colors"
           style={{ color: activeTab === 'deck' ? 'var(--accent-ink)' : 'var(--ink3)' }}
         >
@@ -50,6 +54,7 @@ export const BottomNav: React.FC = () => {
             <LayoutGrid size={20} style={{ strokeWidth: activeTab === 'deck' ? 2 : 1.5 }} />
             {savedCards.length > 0 && (
               <div
+                aria-hidden="true"
                 className="absolute -top-1 -right-2 min-w-[16px] h-4 flex items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
                 style={{ background: 'var(--accent)' }}
               >

@@ -1,14 +1,16 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   Lock, CheckCircle, ArrowLeft, ArrowRight, ChevronDown,
   Map, Compass, Layers, Heart, Shield, Zap, Brain, RefreshCw, FileText,
-  Clock, Eye
+  Clock, Eye, AlertTriangle
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { PHASES, PATHS } from '../data/phases';
 import { useNavigate } from 'react-router-dom';
 import { AxonProgress } from './neuro';
+import { AtmosphericBackground } from './AtmosphericBackground';
+import { CrisisResources } from './CrisisResources';
 
 const PHASE_META: Record<number, { icon: React.ReactNode; accent: string; accentSoft: string; estimate: string; screenType: string }> = {
   0: { icon: <Map size={20} />, accent: '#3B7A57', accentSoft: 'rgba(59,122,87,0.12)', estimate: '15–20 мин', screenType: 'Картография' },
@@ -45,7 +47,10 @@ export function Dashboard() {
   const { activePathId, activePathPhases, highestUnlockedIndex, setCurrentPhaseIndex, resetAll, answers, completedCycles } = useAppStore();
   const navigate = useNavigate();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const activeRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+  const isCrisis = activePathId === 'crisis';
 
   const pathConfig = PATHS.find(p => p.id === activePathId)
     || PATHS.find(p => p.subPaths?.find(s => s.id === activePathId))?.subPaths?.find(s => s.id === activePathId);
@@ -79,27 +84,7 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen relative font-sans" style={{ backgroundColor: 'var(--surface)' }}>
-      {/* 
-        GLASSMORPHISM 3.0 - LAYER 1: Breathing Atmospheric Background
-      */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(5%, 10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full"
-          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.15 }}
-        />
-        <motion.div
-          animate={{
-            transform: ['translate(0%, 0%) scale(1)', 'translate(-5%, -10%) scale(1.1)', 'translate(0%, 0%) scale(1)'],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-[40%] right-[-20%] w-[70vw] h-[70vw] rounded-full"
-          style={{ background: 'radial-gradient(circle, var(--ink) 0%, transparent 70%)', opacity: 0.05 }}
-        />
-      </div>
+      <AtmosphericBackground variant={1} />
 
       {/* Sticky header */}
       <div
@@ -108,15 +93,13 @@ export function Dashboard() {
       >
         <div className="max-w-2xl mx-auto px-6 py-4 flex items-center gap-4">
           <button
-            onClick={() => {
-              resetAll();
-              navigate('/');
-            }}
+            onClick={() => setConfirmReset(true)}
+            aria-label="Сменить режим — текущий прогресс будет сброшен"
             className="p-2.5 rounded-full transition-colors shrink-0"
             style={{ color: 'var(--ink2)', background: 'var(--sunken)' }}
             title="Сменить режим"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={18} aria-hidden="true" />
           </button>
 
           <div className="flex-1 min-w-0">
@@ -151,6 +134,8 @@ export function Dashboard() {
             intensity={50}
           />
         </div>
+
+        {isCrisis && <CrisisResources className="mb-8 relative z-20" />}
 
         {/* Vertical connector */}
         <div
@@ -247,8 +232,8 @@ export function Dashboard() {
                         <motion.div
                           className="absolute -inset-1 rounded-[20px]"
                           style={{ border: `2px solid ${meta.accent}` }}
-                          animate={{ opacity: [0.4, 0.8, 0.4] }}
-                          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                          animate={reduceMotion ? undefined : { opacity: [0.4, 0.8, 0.4] }}
+                          transition={reduceMotion ? undefined : { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                         />
                       )}
                     </div>
@@ -412,6 +397,64 @@ export function Dashboard() {
           </p>
         </motion.div>
       </div>
+
+      {/* Destructive-action guard for "change mode" (which clears progress) */}
+      <AnimatePresence>
+        {confirmReset && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 backdrop-blur-md"
+            style={{ background: 'var(--scrim)' }}
+            onClick={() => setConfirmReset(false)}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Подтверждение смены режима"
+              initial={{ opacity: 0, y: 30, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.97 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[380px] rounded-[24px] p-6 backdrop-blur-2xl"
+              style={{ background: 'var(--glass-2)', border: '1px solid var(--glass-border-2)', boxShadow: '0 30px 60px rgba(0,0,0,0.25)' }}
+            >
+              <div className="flex items-center gap-3 mb-3" style={{ color: 'var(--ink)' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--danger-bg)', color: 'var(--danger-ink)' }}>
+                  <AlertTriangle size={18} aria-hidden="true" />
+                </div>
+                <h3 className="text-xl font-serif italic">Сменить режим?</h3>
+              </div>
+              <p className="text-[13px] leading-relaxed mb-6" style={{ color: 'var(--ink2)' }}>
+                Текущий прогресс пути, сохранённые карты и ответы будут сброшены.
+                Достижения и история циклов сохранятся.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="flex-1 py-3 rounded-[14px] text-[12px] font-bold uppercase tracking-wider transition-all active:scale-[0.98]"
+                  style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--border)' }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    setConfirmReset(false);
+                    resetAll();
+                    navigate('/');
+                  }}
+                  className="flex-1 py-3 rounded-[14px] text-[12px] font-bold uppercase tracking-wider text-white transition-all active:scale-[0.98]"
+                  style={{ background: 'var(--danger-ink)' }}
+                >
+                  Сбросить
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

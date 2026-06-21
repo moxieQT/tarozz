@@ -16,6 +16,7 @@ export function ProfileButton() {
     <button
       onClick={() => navigate('/profile')}
       title="Личный кабинет"
+      aria-label="Личный кабинет"
       style={{
         position: 'fixed',
         top: '16px',
