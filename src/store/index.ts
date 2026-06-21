@@ -408,6 +408,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'tenth-phase-storage',
+      // Don't persist transient UI state: keeps writes small and prevents the
+      // paywall from re-appearing after a reload.
+      partialize: (state) => {
+        const { showPaywall, paywallTrigger, ...persisted } = state;
+        return persisted;
+      },
     }
   )
 );
