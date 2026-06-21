@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '../store';
 import { FeedCard } from '../components/FeedCard';
 import { BottomSheet } from '../components/BottomSheet';
@@ -57,13 +57,13 @@ export const FeedPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedCard]);
 
-  const handleTap = (card: CardType) => {
+  const handleTap = useCallback((card: CardType) => {
     if (atLimit) {
       openPaywall('card_limit');
       return;
     }
     setSelectedCard(card);
-  };
+  }, [atLimit, openPaywall]);
 
   const handleSave = async (intensity: number) => {
     if (selectedCard) {

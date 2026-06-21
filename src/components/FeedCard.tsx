@@ -10,7 +10,7 @@ interface FeedCardProps {
   total: number;
 }
 
-export const FeedCard: React.FC<FeedCardProps> = ({ card, isActive, onTap, index, total }) => {
+const FeedCardComponent: React.FC<FeedCardProps> = ({ card, isActive, onTap, index, total }) => {
   const cardNum = card.id.split('-')[1] || '?';
 
   return (
@@ -81,3 +81,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({ card, isActive, onTap, index
     </div>
   );
 };
+
+// Memoized: cards in the feed list shouldn't re-render when sibling state
+// (e.g. lazy-loading more cards on scroll) changes.
+export const FeedCard = React.memo(FeedCardComponent);
