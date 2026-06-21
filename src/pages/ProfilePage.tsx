@@ -4,7 +4,7 @@ import {
   ArrowLeft, Crown, User, Flame, Layers, RefreshCw,
   Calendar, ChevronDown, Lock, Star, BookOpen, 
   Eye, Heart, Compass, Zap, PenTool, Moon,
-  Shield, Mail, Repeat, Settings, Brain, LogOut, Globe
+  Shield, Mail, Repeat, Settings, Brain, LogOut, Globe, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore, CycleRecord } from '../store';
@@ -295,10 +295,18 @@ export function ProfilePage() {
         lastActiveDate: null,
         activeDays: [],
       },
+      completedPhases: [],
       achievements: [],
       journalEntries: [],
       showPaywall: false,
+      paywallTrigger: '',
     });
+    // Also drop the separately-stored theme preference so nothing personal lingers.
+    try {
+      localStorage.removeItem('tarozz_theme');
+    } catch {
+      /* ignore storage errors */
+    }
     setShowLogoutConfirm(false);
     navigate('/');
   };
@@ -929,10 +937,32 @@ export function ProfilePage() {
                     Данные
                   </span>
                   <span className="text-[11px]" style={{ color: 'var(--ink3)' }}>
-                    Хранятся локально на устройстве
+                    Хранятся локально на устройстве, без шифрования
                   </span>
                 </div>
               </div>
+
+              {/* Delete-all-data control (privacy) */}
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full p-4 rounded-[20px] flex items-center gap-4 text-left transition-all active:scale-[0.98]"
+                style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}
+              >
+                <div
+                  className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+                  style={{ background: 'var(--surface)', color: 'var(--danger-ink)' }}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <span className="text-[13px] font-bold block" style={{ color: 'var(--danger-ink)' }}>
+                    Удалить все мои данные
+                  </span>
+                  <span className="text-[11px]" style={{ color: 'var(--ink2)' }}>
+                    Ответы, карты, журнал и история — безвозвратно
+                  </span>
+                </div>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -977,10 +1007,10 @@ export function ProfilePage() {
                 </div>
 
                 <h3 className="text-lg font-bold mb-2 text-[var(--ink)]" style={{ color: 'var(--ink)' }}>
-                  Выйти из профиля?
+                  Удалить все данные?
                 </h3>
                 <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--ink2)' }}>
-                  Все сохранённые нейроны, рефлексии и история прохождений будут удалены с этого устройства. Это действие необратимо.
+                  Все ответы, сохранённые карты, журнал, нейроны и история прохождений будут безвозвратно удалены с этого устройства.
                 </p>
 
                 <div className="flex gap-3">
@@ -999,7 +1029,7 @@ export function ProfilePage() {
                     onClick={handleLogout}
                     className="flex-1 py-3 px-4 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-lg shadow-red-500/20 transition-all"
                   >
-                    Да, выйти
+                    Удалить
                   </button>
                 </div>
               </div>

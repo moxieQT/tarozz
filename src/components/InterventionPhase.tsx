@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
 import { useAppStore } from '../store';
-import { Layers, ArrowRight, Home } from 'lucide-react';
+import { Layers, ArrowRight, Home, RotateCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AtmosphericBackground } from './AtmosphericBackground';
 
@@ -100,7 +100,7 @@ const Card: React.FC<CardProps> = ({ card, isFront, onSwipe, index, total }) => 
         </div>
 
         <div className="mt-auto pt-6 flex justify-center opacity-50">
-          <span className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: 'var(--ink)' }}>Свайп</span>
+          <span className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: 'var(--ink)' }}>Свайп или кнопка ниже</span>
         </div>
       </div>
     </motion.div>
@@ -121,6 +121,18 @@ export function InterventionPhase() {
       return [...rest, first];
     });
   };
+
+  // Keyboard alternative to the swipe gesture (accessibility / motor needs).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === ' ') {
+        e.preventDefault();
+        handleSwipe();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const currentIndex = swipeCount % INTERVENTION_CARDS.length;
 
@@ -182,7 +194,16 @@ export function InterventionPhase() {
           </div>
         </div>
 
-        <div className="px-6 pb-12 relative z-10 max-w-[340px] mx-auto w-full">
+        <div className="px-6 pb-12 relative z-10 max-w-[340px] mx-auto w-full space-y-3">
+          <button
+            onClick={handleSwipe}
+            aria-label="Следующая карта"
+            className="w-full py-3.5 rounded-[16px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style={{ background: 'var(--glass-1)', color: 'var(--ink)', border: '1px solid var(--glass-border)' }}
+          >
+            <RotateCw size={16} aria-hidden="true" />
+            <span className="text-[12px] font-bold uppercase tracking-[0.15em]">Следующая карта</span>
+          </button>
           <button
             onClick={() => {
               completePhase(currentPhaseId, {});

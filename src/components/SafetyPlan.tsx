@@ -38,7 +38,7 @@ export function SafetyPlan() {
 
     const opt = {
       margin:       10,
-      filename:     'TenthPhase_SafetyPlan.pdf',
+      filename:     'SoulCards_SafetyPlan.pdf',
       image:        { type: 'jpeg' as const, quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#F9F8F6' },
       jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
@@ -101,7 +101,7 @@ export function SafetyPlan() {
               </div>
               <h1 className="text-5xl font-serif italic tracking-tight" style={{ color: 'var(--ink)' }}>План Безопасности</h1>
               <p className="leading-relaxed md:pr-16 text-sm" style={{ color: 'var(--ink2)' }}>
-                Сгенерировано по итогам прохождения цикла "Tenth Phase". Используйте этот документ как спасательный алгоритм при возникновении откатов.
+                Сгенерировано по итогам прохождения цикла Soul Cards. Используйте этот документ как спасательный алгоритм при возникновении откатов.
               </p>
             </div>
 
