@@ -1,10 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useAppStore } from './store';
 import { ThemeProvider } from './context/ThemeContext';
 
 import { BottomNav } from './components/BottomNav';
-import { PaywallModal } from './components/PaywallModal';
 import { ProfileButton } from './components/ProfileButton';
 import { GoogleTranslate } from './components/GoogleTranslate';
 import { AnimatePresence, motion } from 'motion/react';
@@ -21,6 +20,8 @@ const TransferApp = lazy(() => import('./TransferApp').then(m => ({ default: m.T
 
 const FeedPage = lazy(() => import('./pages/FeedPage').then(m => ({ default: m.FeedPage })));
 const DeckPage = lazy(() => import('./pages/DeckPage').then(m => ({ default: m.DeckPage })));
+
+const PaywallModal = lazy(() => import('./components/PaywallModal').then(m => ({ default: m.PaywallModal })));
 
 const SuspenseFallback = () => (
   <div className="flex-1 flex items-center justify-center p-8 h-full min-h-[300px]" style={{ color: 'var(--ink3)' }}>
@@ -110,13 +111,25 @@ export function CartographyAppContent() {
 }
 
 export default function App() {
+  const showPaywall = useAppStore((s) => s.showPaywall);
+  // Lazy-load the paywall chunk only once it's first opened, then keep it
+  // mounted so its internal AnimatePresence open/close animations keep working.
+  const [paywallMounted, setPaywallMounted] = useState(false);
+  useEffect(() => {
+    if (showPaywall) setPaywallMounted(true);
+  }, [showPaywall]);
+
   return (
     <ThemeProvider>
       <GoogleTranslate />
       <div className="h-[100dvh] w-full overflow-y-auto font-sans" style={{ backgroundColor: 'var(--surface)', color: 'var(--ink)' }}>
         <ProfileButton />
-        <PaywallModal />
-        
+        {paywallMounted && (
+          <Suspense fallback={null}>
+            <PaywallModal />
+          </Suspense>
+        )}
+
         <Suspense fallback={<SuspenseFallback />}>
           <Routes>
             <Route path="/" element={<ModeSelection />} />
